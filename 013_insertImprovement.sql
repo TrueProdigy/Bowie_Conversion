@@ -570,64 +570,42 @@ where stateCd is not null;
 
 
 # Set legacy sketch commands using legacy `Drawing` table -- `AppraisalImprovementSegmentDrawing` looked viable too, but I was already kind of deep into this when I noticed that.  If validation fails, we may need to shift our approach to using that table - especially since we use a related table, `AppraisalImprovementSegment`, to determine the origin point for each polygon.
-set @p_skipTrigger = true;
-set group_concat_max_len = 10000; -- Some polygons require us to stitch multiple strings together since they exceed the legacy varchar(60) limit.  This ensures that our stitched command doesn't get truncated.
-
 /*
  -- Without this index, this query will probably stall and die.
  create index DetailIdentifier
   on Drawing (AuditTaxYear, PropertyKey, ImprovementSeq, SegSeq);
  */
- 
-# Preview
-select
-  p.pYear,
-  p.pID,
-  p.pVersion,
-  p.pRollCorr,
-  p.propType,
-  i.pImprovementID,
-  i.sequence,
-  i.imprvType,
-  id.pDetailID,
-  id.sequence,
-  id.imprvDetailType,
-#  origin.*,
-#  id.legacySketchCommands,
-  final.legacySketchCommands
-  from property p
-    join propertyCurrent
-    using (pyear, pid, pversion, prollcorr)
-    join valuationsPropAssoc vpa
-    using (pyear, pid, pversion, prollcorr)
-    join valuations v
-    using (pValuationID)
-    join valuationsCostApproach vca
-    using (pValuationID)
-    join improvement i using (pCostID)
-    join improvementDetail id using (pImprovementID)
-    
-    join lateral (
+
+set group_concat_max_len = 10000; -- Some polygons require us to stitch multiple strings together since they exceed the legacy varchar(60) limit.  This ensures that our stitched command doesn't get truncated.
+
+drop table if exists conversionDB.conversion_sketches;
+create table conversionDB.conversion_sketches
+with drawing as ( -- Drawing.ImprovementDrawingString is a varchar(60) datatype, which is too short for some polygons - so, on more-complicated polygons, commands flow into additional records (indicated by DRWSEQ).  This lateral consolidates those records.
     select
-      concat(nullif(regexp_replace(regexp_replace(trim(DWORIGIN), '([UDLR])', ',M$1'), '^,', ''), ''), ',') as origin
-      from conversionDB.AppraisalImprovementSegment s
-      where
-        s.TaxYear = p.pyear
-        and s.propertyKey = p.pid
-        and s.ImprovementSeq = i.sequence
-        and s.DWSEGSEQ = id.sequence
-    ) as origin -- This determines if there is an off-set from the (0,0) origin. If there is an offset, this returns the prefix to for the polygon to make sure that it is drawn in the correct place.
-    
-    join lateral (
-    select
+      AuditTaxYear, PropertyKey, ImprovementSeq, SegSeq,
       group_concat(ImprovementDrawingString order by DRWSEQ separator '') as originalLegacySketchCommands
       from conversionDB.Drawing d
       where
-        d.AuditTaxYear = p.pYear
-        and d.PropertyKey = p.pID
-        and d.ImprovementSeq = i.sequence
-        and d.SegSeq = id.sequence) d -- Drawing.ImprovementDrawingString is a varchar(60) datatype, which is too short for some polygons - so, on more-complicated polygons, commands flow into additional records (indicated by DRWSEQ).  This lateral consolidates those records.
-    
+        d.AuditTaxYear between @pYearMin and @pYearMax
+#      and AuditTaxYear = 2025 and PropertyKey in (33673, 98018)
+      group by AuditTaxYear, PropertyKey, ImprovementSeq, SegSeq)
+
+select
+  d.AuditTaxYear as pYear,
+  d.PropertyKey as pID,
+  0 as pVersion,
+  0 as pRollCorr,
+  ImprovementSeq as iSequence,
+  SegSeq as idSequence,
+  final.legacySketchCommands
+  from drawing d
+join lateral (
+           select
+      concat(nullif(regexp_replace(regexp_replace(trim(DWORIGIN), '([UDLR])', ',M$1'), '^,', ''), ''), ',') as origin
+      from conversionDB.AppraisalImprovementSegment s
+  where s.TaxYear = d.AuditTaxYear and s.PropertyKey = d.PropertyKey and s.ImprovementSeq = d.ImprovementSeq
+  and s.DWSEGSEQ = d.SegSeq) origin
+
     join lateral (
     select
       regexp_replace(regexp_replace(d.originalLegacySketchCommands, '([UDLRA]+)(\\d|\\.)', ',$1$2'), '^,', '') as withCommas
@@ -642,73 +620,50 @@ select
     select
       concat_ws('', origin.origin, diagonals.legacySketchCommands) as legacySketchCommands
     ) as final -- Put it all together
-
-  
-  where
-    p.pYear = 2025
-    and p.pversion = 0
-    and p.pRollCorr = 0
-    and p.pid in (33673, 98018)
-#    and not id.legacySketchCommands <=> final.legacySketchCommands
 ;
 
+create index conversion_sketches_idx on conversionDB.conversion_sketches(pYear, pID, pversion, prollcorr, iSequence, idSequence);
+#Preview Commands
+select * from  conversionDB.conversion_sketches;
+
+#Preview Updates
+select
+  pYear,
+  pID,
+  pVersion,
+  pRollCorr,
+  pImprovementID,
+  pDetailID,
+  id.legacySketchCommands,
+  s.legacySketchCommands
+from improvement i
+join improvementDetail id using (pYear, pID, pVersion, pRollCorr, pImprovementID)
+join lateral (
+  select legacySketchCommands
+    from conversionDB.conversion_sketches s
+          where
+            s.pYear = i.pyear
+  and s.pid = i.pID
+          and s.pVersion = i.pversion
+  and s.pRollCorr = i.pRollCorr
+  and s.iSequence = i.sequence
+  and s.idSequence = id.sequence) s
+where not s.legacySketchCommands <=> id.legacySketchCommands;
 
 
-update
-  property p
-    join propertyCurrent
-    using (pyear, pid, pversion, prollcorr)
-    join valuationsPropAssoc vpa
-    using (pyear, pid, pversion, prollcorr)
-    join valuations v
-    using (pValuationID)
-    join valuationsCostApproach vca
-    using (pValuationID)
-    join improvement i using (pCostID)
-    join improvementDetail id using (pImprovementID)
-    
-    join lateral (
-    select
-      concat(nullif(regexp_replace(regexp_replace(trim(DWORIGIN), '([UDLR])', ',M$1'), '^,', ''), ''), ',') as origin
-      from conversionDB.AppraisalImprovementSegment s
-      where
-        s.TaxYear = p.pyear
-        and s.propertyKey = p.pid
-        and s.ImprovementSeq = i.sequence
-        and s.DWSEGSEQ = id.sequence
-    ) as origin -- This determines if there is an off-set from the (0,0) origin. If there is an offset, this returns the prefix to for the polygon to make sure that it is drawn in the correct place.
-    
-    join lateral (
-    select
-      group_concat(ImprovementDrawingString order by DRWSEQ separator '') as originalLegacySketchCommands
-      from conversionDB.Drawing d
-      where
-        d.AuditTaxYear = p.pYear
-        and d.PropertyKey = p.pID
-        and d.ImprovementSeq = i.sequence
-        and d.SegSeq = id.sequence) d -- Drawing.ImprovementDrawingString is a varchar(60) datatype, which is too short for some polygons - so, on more-complicated polygons, commands flow into additional records (indicated by DRWSEQ).  This lateral consolidates those records.
-    
-    join lateral (
-    select
-      regexp_replace(regexp_replace(d.originalLegacySketchCommands, '([UDLRA]+)(\\d|\\.)', ',$1$2'), '^,', '') as withCommas
-    ) commas -- Every vector needs to be separated by a comma.
-    
-    join lateral (
-    select
-      regexp_replace(commas.withCommas, 'A([UDLR]\\d*(\\.\\d+)?),([UDLR]\\d*(\\.\\d+)?)', '$1X$3') as legacySketchCommands
-    ) diagonals -- 'A' indicates that the next two commands are moving the next point of the polygon.  We have to translate that into our diagonal format: U10XR10 instead of AU10R10
-    
-    join lateral (
-    select
-      concat_ws('', origin.origin, diagonals.legacySketchCommands) as legacySketchCommands
-    ) as final -- Put it all together
+set @p_skipTrigger = true;
 
-set
-  id.legacySketchCommands = final.legacySketchCommands
-  
-  where
-#    p.pYear = 2025 -- This is a heavy update, so it may be necessary to update these commands by year.
-    p.pversion = 0
-    and p.pRollCorr = 0
-#    and p.pid in (33673, 98018)
-    and not id.legacySketchCommands <=> final.legacySketchCommands; -- Only update where necessary
+update improvement i
+join improvementDetail id using (pYear, pID, pVersion, pRollCorr, pImprovementID)
+join lateral (
+  select legacySketchCommands
+    from conversionDB.conversion_sketches s
+          where
+            s.pYear = i.pyear
+  and s.pid = i.pID
+          and s.pVersion = i.pversion
+  and s.pRollCorr = i.pRollCorr
+  and s.iSequence = i.sequence
+  and s.idSequence = id.sequence) s
+set   id.legacySketchCommands = s.legacySketchCommands
+where not s.legacySketchCommands <=> id.legacySketchCommands;
