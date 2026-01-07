@@ -489,7 +489,10 @@ select
     IF(seg.FunctDepreFact  IS NULL, 100, seg.FunctDepreFact  * 100)      AS functionalAdj,
     IF(seg.PhyDepreFact    IS NULL, 100, seg.PhyDepreFact    * 100)      AS physicalAdj,
     IF(seg.DWFACTOR        IS NULL, 100, seg.DWFACTOR        * 100)      AS pctComplete,
-    s.CalculatedSize as area,
+    CASE
+                     WHEN COALESCE(s.CalculatedSize, 0) <= 0 THEN s.OverrideSize
+                     ELSE s.CalculatedSize
+                   END as area,
     seg.SquareFootage as manualArea,
     'M' as areaSource,
     seg.CalculatedValue as flatValue,
@@ -555,12 +558,7 @@ WHERE p.pYear = 2020
   AND seg.TaxYear = 2020
   AND s.AuditTaxYear = 2020;
 
-#
-# select *
-# from improvementDetail
-# where pid = 48681
-# and pYear = 2025
-
+# setting stateCd
 set @p_user = 'TP Conversion';
 update improvement
 set stateCd = SUBSTRING(TRIM(stateCd), 1, 2)
@@ -575,6 +573,7 @@ where stateCd is not null;
  create index DetailIdentifier
   on Drawing (AuditTaxYear, PropertyKey, ImprovementSeq, SegSeq);
  */
+
 
 set group_concat_max_len = 10000; -- Some polygons require us to stitch multiple strings together since they exceed the legacy varchar(60) limit.  This ensures that our stitched command doesn't get truncated.
 
@@ -650,7 +649,9 @@ join lateral (
   and s.idSequence = id.sequence) s
 where not s.legacySketchCommands <=> id.legacySketchCommands;
 
-
+set @pYearMin = 2020;
+set @pYearMax = 2025;
+set @p_user = 'TP Conversion - insertSketches';
 set @p_skipTrigger = true;
 
 update improvement i
