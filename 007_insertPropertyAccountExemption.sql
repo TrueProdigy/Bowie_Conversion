@@ -64,8 +64,8 @@ segmentCalcRule
 FROM exemptions
 WHERE exemptionYr = 2025;
 
-
-
+set @p_user = 'TP Conversion';
+DROP TABLE  IF EXISTS exemption_map;
 CREATE TABLE IF NOT EXISTS exemption_map (
   src_code VARCHAR(20) NOT NULL,
   dst_code VARCHAR(20) NOT NULL,
@@ -81,24 +81,18 @@ REPLACE INTO exemption_map (src_code, dst_code) VALUES
 ('XHDV','DVHS'),
 ('ABSO','EX-AB'),
 
--- DV31 → HS, OV65, DPS
-('DV31','HS'),
-('DV31','OV65'),
-('DV31','DPS'),
+-- DV31 → DV-UD
+('DV31','DV-UD'),
 
 ('DV03','DV2'),
 ('DV07','DV4'),
 ('XDIS','DP'),
-
--- XHSV → DPS (only)
-('XHSV','DPS'),
+('XHSV','DVHSS'),
 
 ('DV05','DV3'),
 
 -- DV11 → HS, OV65, DV
-('DV11','HS'),
-('DV11','OV65'),
-('DV11','DVHS'),
+('DV11','DV-UD'),
 
 ('DV00','DV0-UD'),
 ('HIST','HT'),
@@ -109,7 +103,6 @@ REPLACE INTO exemption_map (src_code, dst_code) VALUES
 ('XDSP','DPS'),
 ('DV21','DV1S'),
 
--- DV41 → DVHSS (replaces old XHSV→DVHSS)
 ('DV41','DVHSS'),
 
 ('DV25','DV3S'),

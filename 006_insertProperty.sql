@@ -49,8 +49,8 @@ p.AuditTaxYear as pYear
 ,0
 ,0
 ,CASE
-    WHEN left(p.PropertyType, 1) ='R' and p.AppraisalType <> 'MHOM' THEN left(p.PropertyType,1)
-    WHEN left(p.PropertyType,1) ='R' and p.AppraisalType = 'MHOM' THEN 'MH'
+    WHEN left(p.PropertyType, 1) ='R' AND ld.PropertyKey IS  NULL THEN left(p.PropertyType,1)
+    WHEN left(p.PropertyType,1) ='R' AND ld.PropertyKey IS NOT NULL THEN 'MH'
     WHEN left(p.PropertyType,1) IN ('I','P') THEN 'P'
     WHEN left(p.PropertyType,1) ='M' THEN 'MN'
     END AS propertyType
@@ -77,6 +77,10 @@ join conversionDB.AppraisalAccount aa
     on aa.PropertyKey = p.PropertyKey
         and aa.TaxYear = p.AuditTaxYear
         and aa.JurisdictionType = 'CAD'
+left join conversionDB.PropertyLegalDescriptions ld
+    on ld.PropertyKey = p.PropertyKey
+       and ld.AuditTaxYear = p.AuditTaxYear
+       and ld.LegalComponent like '% MHP %'
 left join conversionDB.AcctXREF axref
     on axref.AuditTaxYear = aa.TaxYear
            and axref.AcctXRefType = 'ACCT'
@@ -117,6 +121,32 @@ join conversionDB.AppraisalAccount aa
    and aa.TaxYear     = p.AuditTaxYear
    AND aa.JurisdictionCd = 'CAD'
 where p.AuditTaxYear between @pYearMin and @pYearMax;
+
+-- -- check stateCd
+-- select p.propType, cp.StateCd ,pp.stateCd, pp.stateCodes
+-- from propertyProfile pp
+-- join property p using (pID, pYear, pVersion, pRollCorr)
+-- join conversionDB.Property cp
+--     on cp.PropertyKey = pp.pID
+--     and cp.AuditTaxYear = pp.pYear
+-- where pp.stateCd = '' or pp.stateCd is null
+-- and pp.pYear between @pYearMin and @pYearMax;
+--
+-- set @p_user = 'TP Conversion - stateCdFix';
+-- UPDATE propertyProfile pp
+-- JOIN property p USING (pID, pYear, pVersion, pRollCorr)
+-- JOIN conversionDB.Property cp
+--   ON cp.PropertyKey = pp.pID
+--  AND cp.AuditTaxYear = pp.pYear
+-- SET
+--   pp.stateCd    = cp.StateCd,
+--   pp.stateCodes = cp.StateCd,
+--   pp.updatedBy = @p_user,
+--   pp.updateDt = NOW()
+-- WHERE (pp.stateCd IS NULL OR TRIM(pp.stateCd) = '')
+--   AND cp.StateCd IS NOT NULL
+--   AND TRIM(cp.StateCd) <> ''
+--   AND pp.pYear BETWEEN 2020 AND 2025;
 
 # prop char
 insert into propertyCharacteristics

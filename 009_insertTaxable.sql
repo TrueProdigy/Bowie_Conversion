@@ -9,6 +9,12 @@ set @createdBy = 'TP Conversion - insertTaxable';
 set @createDt = now();
 set sql_safe_updates = 1;
 
+# set sql_safe_updates = 0;
+# set @p_skipTrigger = 0;
+# truncate propertyAccountTaxingUnitStateAgBreakdown;
+# truncate propertyAccountTaxingUnitStateCodeValue;
+# delete from propertyAccountTaxingUnitTaxable;
+
 insert ignore into propertyAccountTaxingUnitTaxable (pid,
                                                      pYear,
                                                      pVersion,
@@ -37,7 +43,6 @@ insert ignore into propertyAccountTaxingUnitTaxable (pid,
                                                      landNHSValue,
                                                      newLandHSValue,
                                                      newLandNHSValue,
-                                                     netAppraisedValue,
                                                      newBppValue,
                                                      agLandMktValue,
                                                      agValue,
@@ -45,11 +50,12 @@ insert ignore into propertyAccountTaxingUnitTaxable (pid,
                                                      suExclusionValue,
                                                      marketValue,
                                                      totalTaxRate,
+                                                     netAppraisedValue,
                                                      createDt)
-select pid
-     , pYear
-     , pVersion
-     , pRollCorr
+select pa.pid
+     , pa.pYear
+     , pa.pVersion
+     , pa.pRollCorr
      , ownerID
      , ownerPct
      , pAccountID
@@ -78,7 +84,6 @@ select pid
      , aa.OtherLandVal                                                           AS landNHSValue
      , aa.HomesiteNewLandVal                                                     AS newLandHSValue
      , aa.OthNewTaxableLandVal                                                   AS newLandNHSValue
-     , aa.TotalNewTaxableVal                                                     AS newAppraisedValue
      , COALESCE(aa.OtherNewPersonalVal, 0) + COALESCE(aa.HomesitePersonalVal, 0) AS newBppValue
      , aa.AgLandMarketVal                                                        AS agLandMktValue
      , aa.AgLandProdVal                                                          AS agValue
@@ -86,11 +91,17 @@ select pid
      , aa.ProductivityLossVal                                                    AS suExclusionValue
      , aa.TotalMarketVal                                                         AS marketValue
      ,CAST(aj.TotalTaxRate AS DECIMAL(9,6))                                      AS totalTaxRate
+     ,CASE when aa.LimitedAppraisedVal > 0
+         then aa.LimitedAppraisedVal
+        else aa.TotalTaxableVal end                                              AS netAppraisedValue
      , @createDt
 from
     propertyAccount pa
         join propertyTaxingUnit ptu
-            using (pid, pYear, pVersion, pRollCorr)
+            on pa.pYear = ptu.pYear
+            and pa.pid = ptu.pid
+            and pa.pRollCorr = ptu.pRollCorr
+            and pa.pVersion = ptu.pVersion
         join taxingUnit tu
             using (taxingUnitID)
         join conversionDB.AppraisalAccount aa
@@ -299,7 +310,36 @@ from
         JOIN taxingUnit tu
             ON tu.taxingUnitID = jtu.taxingUnitID
 WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  AND (DSSExemption = 'Y' OR aa.DVExemptionCd = '31')
+  AND (DSSExemption = 'Y')
+
+UNION ALL
+-- DV-UD
+SELECT patt.pPropertyAccountTaxingUnitID
+     , 'DV-UD'         as exemptionCode
+     , DVExemptionPct as allocationFactor
+     , DVVal          as exemptionAmount
+     , null           as localExemptionAmount
+     , DVVal          as totalExemptionAmount
+     , true           as includeExemptionCount
+from
+    propertyAccountTaxingUnitTaxable patt
+        join propertyAccount pa
+            using (pAccountID)
+        join propertyTaxingUnit ptu
+            using (pTaxingUnitID)
+        join propertyAccountExemptions pae
+            on pae.pID = pa.pid
+        and pae.pYear = pa.pYear
+        and pae.pAccountID = pa.pAccountID
+        join conversionDB.AppraisalAccount aa
+            on aa.TaxYear = pa.pYear
+        and aa.propertyKey = pa.pid
+        JOIN join_tu_u8 jtu
+            ON aa.JurisdictionCd = jtu.code_u8
+        JOIN taxingUnit tu
+            ON tu.taxingUnitID = jtu.taxingUnitID
+WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
+  and aa.DVExemptionCd = '31'
 
 UNION ALL
 -- DVHS

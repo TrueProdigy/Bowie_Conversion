@@ -731,7 +731,7 @@ where formID = @formID;
 create index eventID on appealsXref (eventID);
 
 ##################### inserting to pEventObjects (main connecting table) #####################
-    
+
 # Associate Appeal Events with Appeals IDs
 insert into bowie_events.pEventObjects (
 	eventID,
