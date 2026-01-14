@@ -201,37 +201,82 @@ GROUP BY
 
 
 # prop account
-insert into propertyAccount
+INSERT INTO propertyAccount
 (
-	pYear,
-	pid,
-	pVersion,
-	pRollCorr,
-	ownerID,
-	ownerPct,
-	createdBy,
-	createDt)
-select distinct
-p.AuditTaxYear
-,p.PropertyKey
-,0
-,0
-,aa.OwnerKey
-,CASE
-    WHEN aa.UndividedIntFrac IS NULL THEN NULL
-    WHEN TRIM(aa.UndividedIntFrac) = '' THEN NULL
-    WHEN REPLACE(TRIM(aa.UndividedIntFrac), ',', '') REGEXP '^-?[0-9]+([.][0-9]+)?$'
-      THEN CAST(REPLACE(TRIM(aa.UndividedIntFrac), ',', '') AS DECIMAL(9,6)) * 100
-    ELSE NULL
-  END AS ownerPct
-,@createdBy
-,NOW()
-from conversionDB.Property p
-join conversionDB.AppraisalAccount aa
-    on aa.PropertyKey = p.PropertyKey
-        and aa.TaxYear = p.AuditTaxYear
-        and aa.OwnerKey IS NOT NULL
-where p.AuditTaxYear between @pYearMin and @pYearMax;
+    pYear,
+    pID,
+    pVersion,
+    pRollCorr,
+    ownerID,
+    ownerPct,
+
+    ownerNetAppraisedValue,
+    ownerMarketValue,
+    ownerAppraisedValue,
+    ownerImprovementValue,
+    ownerLandValue,
+    ownerImprovementNHSValue,
+    ownerAgValue,
+    ownerAgExclusionValue,
+    ownerLandHSValue,
+    ownerLandNHSValue,
+    ownerImprovementHSValue,
+    ownerNewValue,
+    ownerTimberValue,
+    ownerTimberLandMktValue,
+    ownerAgLandMktValue,
+    ownerNewBppValue,
+
+    createdBy,
+    createDt,
+    updatedBy,
+    updateDt
+)
+SELECT DISTINCT
+    p.AuditTaxYear                      AS pYear,
+    p.PropertyKey                       AS pID,
+    0                                   AS pVersion,
+    0                                   AS pRollCorr,
+    aa.OwnerKey                         AS ownerID,
+    CASE
+        WHEN NULLIF(TRIM(aa.UndividedIntFrac), '') IS NULL THEN NULL
+        WHEN REPLACE(TRIM(aa.UndividedIntFrac), ',', '') REGEXP '^-?[0-9]+([.][0-9]+)?$'
+            THEN CAST(REPLACE(TRIM(aa.UndividedIntFrac), ',', '') AS DECIMAL(9,6)) * 100
+        ELSE NULL
+    END                                 AS ownerPct,
+    CASE
+        WHEN aa.LimitedAppraisedVal > 0 THEN aa.LimitedAppraisedVal
+        ELSE aa.TotalTaxableVal
+    END                                 AS ownerNetAppraisedValue,
+    aa.TotalMarketVal                   AS ownerMarketValue,
+    aa.TotalTaxableVal                  AS ownerAppraisedValue,
+    aa.TotalImprovementVal              AS ownerImprovementValue,
+    aa.TotalLandVal                     AS ownerLandValue,
+    aa.OtherImprovementVal              AS ownerImprovementNHSValue,
+    aa.AgLandProdVal                    AS ownerAgValue,
+    COALESCE(aa.AgLandMarketVal, 0)
+        - COALESCE(aa.AgLandProdVal, 0)  AS ownerAgExclusionValue,
+    aa.HomesiteLandVal                  AS ownerLandHSValue,
+    aa.OtherLandVal                     AS ownerLandNHSValue,
+    aa.HomesiteImprovementVal           AS ownerImprovementHSValue,
+    aa.TotalNewTaxableVal               AS ownerNewValue,
+    aa.TimberLandProdVal                AS ownerTimberValue,
+    aa.TimberLandMarketVal              AS ownerTimberLandMktValue,
+    aa.AgLandMarketVal                  AS ownerAgLandMktValue,
+    COALESCE(aa.OtherNewPersonalVal, 0)
+        + COALESCE(aa.HomesitePersonalVal, 0)
+                                        AS ownerNewBppValue,
+
+    @createdBy                          AS createdBy,
+    NOW()                               AS createDt,
+    @createdBy                          AS updatedBy,
+    NOW()                               AS updateDt
+FROM conversionDB.Property p
+JOIN conversionDB.AppraisalAccount aa
+    ON aa.PropertyKey = p.PropertyKey
+   AND aa.TaxYear      = p.AuditTaxYear
+   AND aa.OwnerKey IS NOT NULL
+WHERE p.AuditTaxYear BETWEEN @pYearMin AND @pYearMax;
 
 # prop legal description
 INSERT INTO propertyLegalDescription
