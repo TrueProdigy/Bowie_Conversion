@@ -44,15 +44,15 @@ insert into property
     inactive
     )
  select DISTINCT
-p.AuditTaxYear as pYear
-,p.PropertyKey as pID
+aa.TaxYear as pYear
+,aa.PropertyKey as pID
 ,0
 ,0
 ,CASE
-    WHEN left(p.PropertyType, 1) ='R' AND ld.PropertyKey IS  NULL THEN left(p.PropertyType,1)
-    WHEN left(p.PropertyType,1) ='R' AND ld.PropertyKey IS NOT NULL THEN 'MH'
-    WHEN left(p.PropertyType,1) IN ('I','P') THEN 'P'
-    WHEN left(p.PropertyType,1) ='M' THEN 'MN'
+    WHEN left(aa.PropType, 1) ='R' AND ai.PropUse <> 'M3' THEN left(aa.PropType,1)
+    WHEN left(aa.PropType,1) ='R' AND ai.PropUse = 'M3' THEN 'MH'
+    WHEN left(aa.PropType,1) IN ('I','P') THEN 'P'
+    WHEN left(aa.PropType,1) ='M' THEN 'MN'
     END AS propertyType
 # ,aa.MortgageCoCd
 # ,aa.MortgageCoKey
@@ -70,17 +70,10 @@ p.AuditTaxYear as pYear
   END                                                   AS taxDeferralStartDt
 ,CASE WHEN a.ACCSTS = 'PROT' THEN 1 ELSE 0 END         AS underappeal,
  0
-from conversionDB.Property p
-# join pidMap pm
-#     on pm.PropertyKey = p.PropertyKey
-join conversionDB.AppraisalAccount aa
-    on aa.PropertyKey = p.PropertyKey
-        and aa.TaxYear = p.AuditTaxYear
-        and aa.JurisdictionType = 'CAD'
-left join conversionDB.PropertyLegalDescriptions ld
-    on ld.PropertyKey = p.PropertyKey
-       and ld.AuditTaxYear = p.AuditTaxYear
-       and ld.LegalComponent like '% MHP %'
+from  conversionDB.AppraisalAccount aa
+left join conversionDB.AppraisalImprovement ai
+    on ai.PropertyKey = aa.PropertyKey
+       and ai.TaxYear = aa.TaxYear
 left join conversionDB.AcctXREF axref
     on axref.AuditTaxYear = aa.TaxYear
            and axref.AcctXRefType = 'ACCT'
@@ -88,7 +81,8 @@ left join conversionDB.AcctXREF axref
 left join conversionDB.Account a
     on aa.TaxYear = a.AuditTaxYear
            and aa.PropertyKey = a.PropertyKey
-where p.AuditTaxYear between @pYearMin and @pYearMax;
+where aa.TaxYear between @pYearMin and @pYearMax
+ and JurisdictionCd = 'CAD';
 
 
 insert into propertyCurrent(pid,pYear,pVersion,pRollCorr)
