@@ -49,8 +49,8 @@ aa.TaxYear as pYear
 ,0
 ,0
 ,CASE
-    WHEN left(aa.PropType, 1) ='R' AND ai.PropUse <> 'M3' THEN left(aa.PropType,1)
-    WHEN left(aa.PropType,1) ='R' AND ai.PropUse = 'M3' THEN 'MH'
+    WHEN LEFT(aa.PropType, 1) = 'R' AND aa.PropUsage <> 'M3' THEN 'R'
+    WHEN LEFT(aa.PropType, 1) = 'R' AND aa.PropUsage = 'M3' THEN 'MH'
     WHEN left(aa.PropType,1) IN ('I','P') THEN 'P'
     WHEN left(aa.PropType,1) ='M' THEN 'MN'
     END AS propertyType
