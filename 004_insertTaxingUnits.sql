@@ -29,12 +29,21 @@ INSERT INTO taxingUnit (
   mailingAddressZip,
   email,
   phone,
+  inactive,
   createdBy,
   createDt
 )
-SELECT
-  j.JurisdictionName,
-  j.PTDNo,
+
+with j as (
+select
+  if(row_number() over (partition by JurisdictionCode order by cast(AuditTaxYear as unsigned) desc) = 1, true, false) as latest,
+       j.*
+from conversionDB.Jurisdiction j
+  )
+
+select
+j.JurisdictionName as taxingUnitName,
+  j.PTDNo as taxingUnitNum,
   CASE TRIM(j.JurisdictionType)
     WHEN 'CITY' THEN 'City'
     WHEN 'SCHL' THEN 'School'
@@ -45,61 +54,36 @@ SELECT
     WHEN 'MUD'  THEN 'Municipal Utility District'
     WHEN 'ERR'  THEN 'Error Jurisdiction-Unknown'
     WHEN 'CAD'  THEN 'Appraisal District'
-  END,
-  TRIM(j.JurisdictionCode),
-  ad.AddressOne,
-  ad.AddressTwo,
-  ad.AddressThree,
-  ad.City,
-  ad.State,
+  END as taxingUnitType,
+  TRIM(j.JurisdictionCode) as taxingUnitCode,
+  ad.AddressOne as mailingAddressLine1,
+  ad.AddressTwo as mailingAddressLine2,
+  ad.AddressThree as mailingAddressLine3,
+  ad.City as mailingAddressCity,
+  ad.State as mailingAddressState,
   CASE
     WHEN ad.PostalCode IS NULL OR ad.PostalCode = '' THEN NULL
     WHEN CHAR_LENGTH(TRIM(ad.PostalCode)) > 5
          AND TRIM(ad.PostalCode) NOT LIKE '%-%'
       THEN CONCAT(SUBSTRING(TRIM(ad.PostalCode), 1, 5), '-', SUBSTRING(TRIM(ad.PostalCode), 6))
     ELSE TRIM(ad.PostalCode)
-  END,
-  TRIM(j.EmailAddress),
-  TRIM(j.PhoneNumberOne),
-  @createdBy,
-  @createDt
-FROM conversionDB.Jurisdiction j
-JOIN conversionDB.AddressDetail ad
-  ON ad.AddressKey = j.AddressKey
-WHERE j.JurisdictionName = 'TEXARKANA ISD'
-  AND JurisdictionCode = '03T'
-  AND NOT EXISTS (
-  SELECT 1
-  FROM conversionDB.Jurisdiction j2
-  JOIN conversionDB.AddressDetail ad2
-    ON ad2.AddressKey = j2.AddressKey
-  WHERE j2.JurisdictionName = j.JurisdictionName
-    AND (
-      ((ad2.AddressOne IS NOT NULL AND ad2.AddressOne <> '') +
-       (ad2.City       IS NOT NULL AND ad2.City       <> '') +
-       (ad2.State      IS NOT NULL AND ad2.State      <> '') +
-       (ad2.PostalCode IS NOT NULL AND ad2.PostalCode <> ''))
-      >
-      ((ad.AddressOne IS NOT NULL AND ad.AddressOne <> '') +
-       (ad.City       IS NOT NULL AND ad.City       <> '') +
-       (ad.State      IS NOT NULL AND ad.State      <> '') +
-       (ad.PostalCode IS NOT NULL AND ad.PostalCode <> ''))
-      OR (
-        ((ad2.AddressOne IS NOT NULL AND ad2.AddressOne <> '') +
-         (ad2.City       IS NOT NULL AND ad2.City       <> '') +
-         (ad2.State      IS NOT NULL AND ad2.State      <> '') +
-         (ad2.PostalCode IS NOT NULL AND ad2.PostalCode <> ''))
-        =
-        ((ad.AddressOne IS NOT NULL AND ad.AddressOne <> '') +
-         (ad.City       IS NOT NULL AND ad.City       <> '') +
-         (ad.State      IS NOT NULL AND ad.State      <> '') +
-         (ad.PostalCode IS NOT NULL AND ad.PostalCode <> ''))
-        AND j2.AddressKey < j.AddressKey
-      )
-    )
-);
+  END as mailingAddressZip,
+  TRIM(j.EmailAddress) as email,
+  TRIM(j.PhoneNumberOne) as phone,
+  if(cast(j.AuditTaxYear as unsigned) < @pYearMin, true, false) as inactive,
+  @createdBy as createdBy,
+  @createDt as createDt
+  
+from j
+left join conversionDB.AddressDetail ad
+  on ad.AddressKey = j.AddressKey
+where latest
+and not exists (select true from taxingUnit tu where tu.taxingUnitCode = j.JurisdictionCode)
+;
+
 
 select * from taxingUnit;
+
 
 insert ignore into propertyTaxingUnit (
 pid,
@@ -112,8 +96,8 @@ createDt,
 createdBy
 )
 select DISTINCT
-            aa.PropertyKey
-          , aa.TaxYear
+            aa.PropertyKey as pID
+          ,aa.pYear
           , 0
           , 0
           , tu.taxingUnitID
@@ -127,7 +111,10 @@ select DISTINCT
              AND aa.PropertyKey = p.PropertyKey
              JOIN taxingUnit tu
                 on tu.taxingUnitCode = aa.JurisdictionCd
-     where p.AuditTaxYear between @pYearMin and @pYearMax;
+     where p.AuditTaxYear between @pYearMin and @pYearMax
+
+and not exists ( select * from propertyTaxingUnit ptu where ptu.pyear = aa.pyear and ptu.pid = aa.PropertyKey and ptu.pVersion = 0 and ptu.pRollCorr = 0 and ptu.taxingUnitID = tu.taxingUnitID )
+;
 
 
 insert into taxingUnitVersion (taxingUnitID,
@@ -135,16 +122,20 @@ insert into taxingUnitVersion (taxingUnitID,
                                active,
                                createDt,
                                createdBy)
-select taxingUnitID
-     , tj.AuditTaxYear
-     , 1
+select
+#  JurisdictionCode,
+  taxingUnitID
+     , tj.AuditTaxYear as taxingUnitYr
+     , 1 as active
      , @createDt
      , @createdBy
 from
     conversionDB.Jurisdiction tj
         join taxingUnit tu
             on tu.taxingUnitCode = tj.JurisdictionCode
-where tj.AuditTaxYear between @pYearMin and @pYearMax;
+where tj.AuditTaxYear between @pYearMin and @pYearMax
+and not exists ( select * from taxingUnitVersion tv where tv.taxingUnitID = tu.taxingUnitID and tv.taxingUnitYr = tj.AuditTaxYear and tv.active = 1)
+;
 
 
 insert into taxingUnitTaxRates (
@@ -167,9 +158,15 @@ from taxingUnitVersion tv
     join conversionDB.AppraisalJurisdiction aj
         on aj.JurisdictionCd = tu.taxingUnitCode
         and aj.TaxYear = tv.taxingUnitYr
-    where tv.taxingUnitYr between @pYearMin and @pYearMax;
+    where tv.taxingUnitYr between @pYearMin and @pYearMax
+and not exists ( select * from taxingUnitTaxRates tt where tt.versionID = tv.versionID)
+;
 
 select * from taxingUnitTaxRates;
+
+
+
+
 
 
 insert into taxingUnitExemptions (
@@ -201,7 +198,9 @@ join exemption_map em
 join conversionDB.AppraisalJurisdiction aj
         on aj.JurisdictionCd = tu.taxingUnitCode
         and aj.TaxYear = tv.taxingUnitYr
-where tv.taxingUnitYr between @pYearMin and @pYearMax;
+where tv.taxingUnitYr between @pYearMin and @pYearMax
+and not exists ( select * from taxingUnitExemptions s where s.versionID = tv.versionID and s.exemptionCode = em.dst_code)
+;
 
 INSERT INTO taxingUnitExemptions (
     versionID,
