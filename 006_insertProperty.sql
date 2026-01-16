@@ -49,11 +49,19 @@ aa.TaxYear as pYear
 ,0
 ,0
 ,CASE
-    WHEN LEFT(aa.PropType, 1) = 'R' AND aa.PropUsage <> 'M3' THEN 'R'
-    WHEN LEFT(aa.PropType, 1) = 'R' AND aa.PropUsage = 'M3' THEN 'MH'
-    WHEN left(aa.PropType,1) IN ('I','P') THEN 'P'
-    WHEN left(aa.PropType,1) ='M' THEN 'MN'
-    END AS propertyType
+    WHEN pp.PropertyKey IS NOT NULL THEN 'P'
+
+    WHEN LEFT(aa.PropType, 1) = 'R'
+         AND COALESCE(aa.PropUsage,'') <> 'M3'
+    THEN 'R'
+
+    WHEN LEFT(aa.PropType, 1) = 'R'
+         AND aa.PropUsage = 'M3'
+    THEN 'MH'
+
+    WHEN LEFT(aa.PropType, 1) IN ('I','P') THEN 'P'
+    WHEN LEFT(aa.PropType, 1) = 'M' THEN 'MN'
+END AS propertyType
 # ,aa.MortgageCoCd
 # ,aa.MortgageCoKey
 ,Case
@@ -81,6 +89,17 @@ left join conversionDB.AcctXREF axref
 left join conversionDB.Account a
     on aa.TaxYear = a.AuditTaxYear
            and aa.PropertyKey = a.PropertyKey
+LEFT JOIN (
+    SELECT DISTINCT AuditTaxYear, PropertyKey
+    FROM conversionDB.PropertyLegalDescriptions
+    WHERE AuditTaxYear between @pYearMin and @pYearMax
+      AND (
+           LegalComponent LIKE 'PERSONAL PROPERTY%'
+        OR LegalComponent LIKE '%PERSONAL PROPERTY'
+      )
+) pp
+  ON pp.AuditTaxYear = aa.TaxYear
+ AND pp.PropertyKey = aa.PropertyKey
 where aa.TaxYear between @pYearMin and @pYearMax
  and JurisdictionCd = 'CAD';
 
