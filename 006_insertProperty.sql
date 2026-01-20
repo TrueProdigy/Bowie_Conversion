@@ -174,7 +174,7 @@ MAX(util.ImprovementFeatureCode) AS utilities,   -- util.ImprovementFeatureType=
 MAX(zone.LandCharCode)         AS zoning,
 NOW(),
 @createdBy,
-CASE WHEN MAX(a.LateRenditionPenaltyFlag <> 'F') = 1 THEN 1 ELSE 0 END
+CASE WHEN MAX(a.LateRenditionPenaltyFlag = 'T') = 1 THEN 1 ELSE 0 END
       AS bppLateFilingPenaltyFlag
   from conversionDB.Property p
   join conversionDB.AppraisalAccount aa
