@@ -180,9 +180,12 @@ SELECT
     p.pRollCorr as pRollCorr,
     NULL as landType,
     al.DWLNDSEQ as sequence,
-    al.PropUse as stateCd,
+    CASE WHEN al.DWACALC > 0.00 THEN 'D1' ELSE al.PropUse END as stateCd,
     cf.codeName as class,
-    CASE WHEN al.DWHOMSITE = 'N' THEN 0 ELSE 1 END as homesite,
+    CASE WHEN al.DWHOMSITE = 'N'
+         OR al.DWACALC > 0.00
+        THEN 0
+        ELSE 1 END as homesite,
 #     NULL as homesiteOverride,
 #     NULL as homesitePct,
 #     NULL as influence,
