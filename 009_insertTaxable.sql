@@ -16,988 +16,217 @@ alter table conversionDB.AppraisalAccount
 call conversionDB.CreateIndex('conversionDB', 'AppraisalAccount', 'PropertyKey', 'pYear, PropertyKey');
 
 
-
+/*
+set foreign_key_checks = false;
 # set sql_safe_updates = 0;
-# set @p_skipTrigger = 0;
-# truncate propertyAccountTaxingUnitStateAgBreakdown;
-# truncate propertyAccountTaxingUnitStateCodeValue;
-# delete from propertyAccountTaxingUnitTaxable;
+truncate propertyAccountTaxingUnitTaxable;
+truncate propertyAccountTaxingUnitExemptions;
+truncate propertyAccountTaxingUnitStateAgBreakdown;
+truncate propertyAccountTaxingUnitStateCodeValue;
+set foreign_key_checks = true;
+*/
 
-insert ignore into propertyAccountTaxingUnitTaxable (pid,
-                                                     pYear,
-                                                     pVersion,
-                                                     pRollCorr,
-                                                     ownerID,
-                                                     ownerPct,
-                                                     pAccountID,
-                                                     pTaxingUnitID,
-                                                     taxingUnitID,
-                                                     taxableValue,
-                                                     actualTax,
-                                                     legacyTaxableValue,
-                                                     appraisedValue,
-                                                     isUDI,
-                                                     taxingUnitPct,
-                                                     suValue,
-                                                     suLandMktValue,
-                                                     timberLandMktValue,
-                                                     timberValue,
-                                                     timberExclusionValue,
-                                                     improvementHSValue,
-                                                     improvementNHSValue,
-                                                     newImprovementHSValue,
-                                                     newImprovementNHSValue,
-                                                     landHSValue,
-                                                     landNHSValue,
-                                                     newLandHSValue,
-                                                     newLandNHSValue,
-                                                     newBppValue,
-                                                     agLandMktValue,
-                                                     agValue,
-                                                     agExclusionValue,
-                                                     suExclusionValue,
-                                                     marketValue,
-                                                     totalTaxRate,
-                                                     netAppraisedValue,
-                                                     createDt)
-select pa.pid
-     , pa.pYear
-     , pa.pVersion
-     , pa.pRollCorr
-     , ownerID
-     , ownerPct
-     , pAccountID
-     , pTaxingUnitID
-     , taxingUnitID
-     , aa.TotalTaxableVal                                                        AS taxableValue
-     , aa.TotalTaxLevy                                                           AS actualTax
-     , aa.TotalTaxableVal                                                        AS legacyTaxableValue
-     , aa.TotalAppraisedVal                                                      AS appraisedValue
-     , case
-           when aa.UndividedIntFrac < 1.0000
-               then 1
-           else 0
-       end                                                                       as isUDI
-     , ptu.jurisdictionPct                                                       AS taxingUnitPct
-     , COALESCE(aa.TimberLandProdVal, 0) + COALESCE(aa.AgLandProdVal, 0)         AS suValue
-     , COALESCE(aa.TimberLandMarketVal, 0) + COALESCE(aa.AgLandMarketVal, 0)     AS suLandMktValue
-     , aa.TimberLandMarketVal                                                    AS timberLandMktValue
-     , aa.TimberLandProdVal                                                      AS timberValue
-     , COALESCE(aa.TimberLandMarketVal, 0) - COALESCE(aa.TimberLandProdVal, 0)   AS timberExclusionValue
-     , aa.HomesiteImprovementVal                                                 AS improvementHSValue
-     , aa.OtherImprovementVal                                                    AS improvementNHSValue
-     , aa.HomesiteNewImprovementVal                                              AS newImprovementHSValue
-     , aa.OtherNewImprovementVal                                                 AS newImprovementNHSValue
-     , aa.HomesiteLandVal                                                        AS landHSValue
-     , aa.OtherLandVal                                                           AS landNHSValue
-     , aa.HomesiteNewLandVal                                                     AS newLandHSValue
-     , aa.OthNewTaxableLandVal                                                   AS newLandNHSValue
-     , COALESCE(aa.OtherNewPersonalVal, 0) + COALESCE(aa.HomesitePersonalVal, 0) AS newBppValue
-     , aa.AgLandMarketVal                                                        AS agLandMktValue
-     , aa.AgLandProdVal                                                          AS agValue
-     , COALESCE(aa.AgLandMarketVal, 0) - COALESCE(aa.AgLandProdVal, 0)           AS agExclusionValue
-     , aa.ProductivityLossVal                                                    AS suExclusionValue
-     , aa.TotalMarketVal                                                         AS marketValue
-     ,CAST(aj.TotalTaxRate AS DECIMAL(9,6))                                      AS totalTaxRate
-     ,CASE when aa.LimitedAppraisedVal > 0
-         then aa.LimitedAppraisedVal
-        else aa.TotalTaxableVal end                                              AS netAppraisedValue
-     , @createDt
-from
-    propertyAccount pa
-        join propertyTaxingUnit ptu
-            on pa.pYear = ptu.pYear
-            and pa.pid = ptu.pid
-            and pa.pRollCorr = ptu.pRollCorr
-            and pa.pVersion = ptu.pVersion
-        join taxingUnit tu
-            using (taxingUnitID)
-        join conversionDB.AppraisalAccount aa
-            on aa.pYear = pa.pYear -- Added an indexed, int pYear column to AppraisalAccount to speed this up! -- CCM
-        and aa.PropertyKey = pa.pid
-        and aa.JurisdictionCd = tu.taxingUnitCode
-        join conversionDB.AppraisalJurisdiction aj
-            on aj.TaxYear = pa.pYear
-        and aj.JurisdictionCd = aa.JurisdictionCd
+insert into propertyAccountTaxingUnitTaxable (
+                                                pAccountID,
+pTaxingUnitID,
+pYear,
+pID,
+pVersion,
+pRollCorr,
+isUDI,
+ownerID,
+ownerPct,
+taxingUnitID,
+taxingUnitPct,
+marketValue,
+improvementHSValue,
+improvementNHSValue,
+landHSValue,
+landNHSValue,
+suLandMktValue,
+suValue,
+suExclusionValue,
+agLandMktValue,
+agValue,
+agExclusionValue,
+timberLandMktValue,
+timberValue,
+timberExclusionValue,
+timber78LandMktValue,
+timber78Value,
+timber78ExclusionValue,
+appraisedValue,
+cbTaxLimitationValue,
+hsTaxLimitationValue,
+limitationValue,
+netAppraisedValue,
+# legacyExemptionValue,
+taxableValue,
+legacyTaxableValue,
+totalTaxRate,
+actualTax,
+newImprovementHSValue,
+newImprovementNHSValue,
+newLandHSValue,
+newLandNHSValue,
+newBppValue
+)
 
-where pa.pYear between @pYearMin and @pYearMax;
+select
+  pAccountID,
+  pTaxingUnitID,
+  
+  pYear,
+  PropertyKey as pID,
+  0 as pVersion,
+  0 as pRollCorr,
+  
+  
+  if(ownerPct <> 100, true, false) as isUDI,
+  ownerKey as ownerID,
+  ownerPct,
+  
+  taxingUnitID,
+  taxingUnitPct,
+  
+  
+  aa.TotalMarketVal as marketValue,
+
+  
+  aa.HomesiteImprovementVal as improvementHSValue,
+  aa.OtherImprovementVal improvementNHSValue,
+
+  aa.HomesiteLandVal as landHSValue,
+  calcs.landNHSValue,
+
+  aa.agLandMarketVal + TimberLandMarketVal + RestrictedUseTimberMarketVal as suLandMktValue,
+  aa.AgLandProdVal + TimberLandProdVal + RestrictedUseTimberProdVal as suValue,
+  aa.ProductivityLossVal as suExclusionValue,
+
+  aa.AgLandMarketVal as agLandMktValue,
+  aa.AgLandProdVal as agValue,
+  aa.AgLandMarketVal - AgLandProdVal as agExclusionValue,
+
+  aa.TimberLandMarketVal as timberLandMktValue,
+  aa.TimberLandProdVal as timberValue,
+  aa.TimberLandMarketVal - TimberLandProdVal as timberExclusionValue,
+
+  aa.RestrictedUseTimberMarketVal as timber78LandMktValue,
+  aa.RestrictedUseTimberProdVal as timber78Value,
+  aa.RestrictedUseTimberMarketVal - RestrictedUseTimberProdVal as timber78ExclusionValue,
+
+  calcs.appraisedValue as appraisedValue,
+
+  caps.cbTaxLimitationValue,
+  caps.hsTaxLimitationValue,
+  calcs.limitationValue,
+  
+  aa.TotalAppraisedVal as netAppraisedValue,
+  
+#  calcs.legacyExemptionValue,
+  
+   aa.TotalTaxableVal as taxableValue,
+  aa.TotalTaxableVal as legacyTaxableValue,
+
+  ptu.totalTaxRate,
+  aa.TotalTaxLevy as actualTax,
+  
+  aa.HomesiteNewImprovementVal as newImprovementHSValue,
+  aa.OtherNewImprovementVal as newImprovementNHSValue,
+  
+  aa.HomesiteNewLandVal as newLandHSValue,
+  aa.OtherNewLandVal as newLandNHSValue,
+  
+  aa.HomesiteNewPersonalVal + aa.OtherNewPersonalVal as newBppValue
+
+FROM conversionDB.AppraisalAccount aa
+join lateral (
+  select
+    aa.OtherLandVal + aa.UnqualAgTimberLandVal as landNHSValue,
+    aa.TotalMarketVal - ProductivityLossVal as appraisedValue,
+    aa.AgLandMarketVal - aa.aglandProdVal as agLoss,
+    aa.TimberLandMarketVal - aa.timberLandProdVal as timberLoss,
+    if(LimitedAppraisedVal > 0, aa.TotalMarketVal - aa.limitedAppraisedVal, 0) as limitationValue,
+    LocalGenHomesteadVal + StateGenHomesteadVal +
+        LocalOver65Val + StateOver65Val + LocalOver65SurvivingSpouseVal + StateOver65SurvivingSpouseVal +
+        LocalDPVal + StateDPVal + LocalDisabledSurvivingSpouseVal + StateDisabledSurvivingSpouseVal +
+        DVVal +
+        AbsVal +
+        FreeportVal +
+        GoodsInTransitVal +
+        SolarWindVal +
+        HistVal +
+        Hb1200Val +
+        FTZVal +
+        Min500Val +
+        PollutionControlVal +
+        AbatementVal + SpecAbatementVal +
+        MiscVal + SpecMiscExemptionVal +
+        WaterConVal as legacyExemptionValue,
+    aa.TotalAppraisedVal as netAppraisedValue
+  ) calcs
+
+  join lateral (
+    select
+      calcs.limitationValue - HomesiteCapLossVal as cbTaxLimitationValue,
+      HomesiteCapLossVal as hsTaxLimitationValue
+  ) caps
 
 
+
+join lateral (
+  select pa.pAccountID, pa.ownerPct
+  from propertyAccount pa
+  where pa.pyear = aa.pyear
+  and pa.pID = aa.PropertyKey
+  and pa.pVersion = 0
+  and pa.pRollCorr = 0
+  and pa.ownerID = aa.ownerKey
+  ) pa
+
+  
+join lateral (
+  select ptu.pTaxingUnitID, ptu.jurisdictionPct as taxingUnitPct, ptu.taxingUnitID, ifnull(rates.totalTaxRate,0) as totalTaxRate
+
+  from propertyTaxingUnit ptu
+  join taxingUnit tu using (taxingUnitID)
+  left join lateral (
+    select totalTaxRate
+    from taxingUnitVersion tuv
+    join taxingUnitTaxRates rates using (versionID)
+    where tuv.taxingUnitID = ptu.taxingUnitID
+    and tuv.taxingUnitYr = aa.pyear
+    order by active desc
+    limit 1
+    ) rates on true
+  where ptu.pyear = aa.pyear
+  and ptu.pID = aa.PropertyKey
+  and ptu.pVersion = 0
+  and ptu.pRollCorr = 0
+  and tu.taxingUnitCode = aa.JurisdictionCd
+  ) ptu
+
+
+
+  where
+    not exists ( select * from propertyAccountTaxingUnitTaxable tax where tax.pTaxingUnitID = ptu.pTaxingUnitID and tax.pAccountID = pa.pAccountID);
+
+  
+  
+  
+  
+  
 
 /*
-# The original (commented) approach here worked, but building the table via unions, pre-insert, meant redoing *everything* if any snags were hit.  I opted to split it up by exemption type to allow for easier troubleshooting/debugging.
-# The approach that follows (under the commented bit) also includes logic for specifying calculationType and for proration.
--- Chris, 2026-01-13
-
-
-CREATE TABLE IF NOT EXISTS join_tu_u8 (
-  taxingUnitID INT PRIMARY KEY,
-  code_u8 VARCHAR(10)
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_0900_ai_ci,
-  KEY idx_code_u8 (code_u8)
-) ENGINE=InnoDB;
-
--- refresh (safe to re-run)
-REPLACE INTO join_tu_u8 (taxingUnitID, code_u8)
-SELECT t.taxingUnitID,
-       CONVERT(t.taxingUnitCode USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
-FROM taxingUnit AS t;
-
-
-insert into propertyAccountTaxingUnitExemptions (
-	pPropertyAccountTaxingUnitID,
-	exemptionCode,
-	allocationFactor,
-    exemptionAmount,
-	localExemptionAmount,
-	totalExemptionAmount,
-	includeExemptionCount)
--- HS
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'HS'                                        as exemptionCode
-     , GenHSExemptionPct                           as allocationFactor
-     , StateGenHomesteadVal                        as exemptionAmount
-     , LocalGenHomesteadVal                        as localExemptionAmount
-     , StateGenHomesteadVal + LocalGenHomesteadVal as totalExemptionAmount
-     , true                                        as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  AND GenHSExemption = 'Y'
-
-UNION ALL
--- EX-AB
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'EX-AB'            as exemptionCode
-     , aa.AbsExemptionPct as allocationFactor
-     , aa.AbsVal          as exemptionAmount
-     , null               as localExemptionAmount
-     , aa.AbsVal          as totalExemptionAmount
-     , true               as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.AbsExemption = 'Y'
-
-UNION ALL
--- OV65
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'OV65'                          as exemptionCode
-     , Ov65ExemptionPct                as allocationFactor
-     , StateOver65Val                  as exemptionAmount
-     , LocalOver65Val                  as localExemptionAmount
-     , StateOver65Val + LocalOver65Val as totalExemptionAmount
-     , true                            as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  AND aa.Ov65Exemption = 'Y'
-
-UNION ALL
--- OV65S
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'OV65S'                                                       as exemptionCode
-     , Ov65SSExemptionPct                                            as allocationFactor
-     , StateOver65SurvivingSpouseVal                                 as exemptionAmount
-     , LocalOver65SurvivingSpouseVal                                 as localExemptionAmount
-     , StateOver65SurvivingSpouseVal + LocalOver65SurvivingSpouseVal as totalExemptionAmount
-     , true                                                          as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  AND Ov65SSExemption = 'Y'
-
-UNION ALL
--- DP
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DP'                    as exemptionCode
-     , DPExemptionPct          as allocationFactor
-     , StateDPVal              as exemptionAmount
-     , LocalDPVal              as localExemptionAmount
-     , StateDPVal + LocalDPVal as totalExemptionAmount
-     , true                    as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  AND DPExemption = 'Y'
-
-UNION ALL
--- DPS
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DPS'                                                             as exemptionCode
-     , DSSExemptionPct                                                   as allocationFactor
-     , StateDisabledSurvivingSpouseVal                                   as exemptionAmount
-     , LocalDisabledSurvivingSpouseVal                                   as localExemptionAmount
-     , StateDisabledSurvivingSpouseVal + LocalDisabledSurvivingSpouseVal as totalExemptionAmount
-     , true                                                              as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  AND (DSSExemption = 'Y')
-
-UNION ALL
--- DV-UD
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV-UD'         as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd = '31'
-
-UNION ALL
--- DVHS
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DVHS'         as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('HS', '11', 'XHDV')
-
-UNION ALL
--- DV1
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV1'          as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('01')
-
-UNION ALL
--- DV3
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV3'          as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('05')
-
-UNION ALL
--- DV4
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV4'          as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('07')
-
-UNION ALL
--- DVHSS
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DVHSS'        as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('41')
-
-UNION ALL
--- DV0-UD
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV0-UD'       as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('00')
-
-UNION ALL
--- DV2
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV2'          as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('03')
-
-UNION ALL
--- DV1S
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV1S'         as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('21')
-
-UNION ALL
--- DV2S
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV2S'         as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('23')
-
-UNION ALL
--- DV3S
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV3S'         as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('25')
-
-UNION ALL
--- DV4S
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'DV4S'         as exemptionCode
-     , DVExemptionPct as allocationFactor
-     , DVVal          as exemptionAmount
-     , null           as localExemptionAmount
-     , DVVal          as totalExemptionAmount
-     , true           as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.DVExemptionCd in ('27')
-
-UNION ALL
--- FR
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'FR'                 as exemptionCode
-     , FreeportExemptionPct as allocationFactor
-     , FreeportVal          as exemptionAmount
-     , null                 as localExemptionAmount
-     , FreeportVal          as totalExemptionAmount
-     , true                 as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.FreeportExemption = 'Y'
-
-UNION ALL
--- GIT
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'GIT'                   as exemptionCode
-     , GoodsInTranExemptionPct as allocationFactor
-     , GoodsInTransitVal       as exemptionAmount
-     , null                    as localExemptionAmount
-     , GoodsInTransitVal       as totalExemptionAmount
-     , true                    as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.GoodsInTranExemption = 'Y'
-
-UNION ALL
--- SO
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'SO'                  as exemptionCode
-     , SolarWindExemptionPct as allocationFactor
-     , SolarWindVal          as exemptionAmount
-     , null                  as localExemptionAmount
-     , SolarWindVal          as totalExemptionAmount
-     , true                  as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.SolarWindExemption = 'Y'
-
-UNION ALL
--- HT
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'HT'             as exemptionCode
-     , HistExemptionPct as allocationFactor
-     , HistVal          as exemptionAmount
-     , null             as localExemptionAmount
-     , HistVal          as totalExemptionAmount
-     , true             as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.HistExemption = 'Y'
-
-UNION ALL
--- HB12
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'HB12'             as exemptionCode
-     , Hb1200ExemptionPct as allocationFactor
-     , Hb1200Val          as exemptionAmount
-     , null               as localExemptionAmount
-     , Hb1200Val          as totalExemptionAmount
-     , true               as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.Hb1200Exemption = 'Y'
-
-UNION ALL
--- FTZ
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'FTZ'           as exemptionCode
-     , FTZExemptionPct as allocationFactor
-     , FTZVal          as exemptionAmount
-     , null            as localExemptionAmount
-     , FTZVal          as totalExemptionAmount
-     , true            as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.FTZExemption = 'Y'
-
-UNION ALL
--- EX366
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'EX366'            as exemptionCode
-     , Min500ExemptionPct as allocationFactor
-     , Min500Val          as exemptionAmount
-     , null               as localExemptionAmount
-     , Min500Val          as totalExemptionAmount
-     , true               as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.Min500Exemption = 'Y'
-
-UNION ALL
--- AB
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'AB'                  as exemptionCode
-     , AbatementExemptionPct as allocationFactor
-     , AbatementVal          as exemptionAmount
-     , null                  as localExemptionAmount
-     , AbatementVal          as totalExemptionAmount
-     , true                  as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.AbatementExemption = 'Y'
-
-UNION ALL
--- PC
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'PC'                     as exemptionCode
-     , PollutionConExemptionPct as allocationFactor
-     , PollutionControlVal      as exemptionAmount
-     , null                     as localExemptionAmount
-     , PollutionControlVal      as totalExemptionAmount
-     , true                     as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.PollutionConExemption = 'Y'
-
-UNION ALL
--- MISC
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'MISC'           as exemptionCode
-     , MiscExemptionPct as allocationFactor
-     , MiscVal          as exemptionAmount
-     , null             as localExemptionAmount
-     , MiscVal          as totalExemptionAmount
-     , true             as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.MiscExemption = 'Y'
-
-UNION ALL
--- WATR
-SELECT patt.pPropertyAccountTaxingUnitID
-     , 'WATR'               as exemptionCode
-     , WaterConExemptionPct as allocationFactor
-     , WaterConVal          as exemptionAmount
-     , null                 as localExemptionAmount
-     , WaterConVal          as totalExemptionAmount
-     , true                 as includeExemptionCount
-from
-    propertyAccountTaxingUnitTaxable patt
-        join propertyAccount pa
-            using (pAccountID)
-        join propertyTaxingUnit ptu
-            using (pTaxingUnitID)
-        join propertyAccountExemptions pae
-            on pae.pID = pa.pid
-        and pae.pYear = pa.pYear
-        and pae.pAccountID = pa.pAccountID
-        join conversionDB.AppraisalAccount aa
-            on aa.TaxYear = pa.pYear
-        and aa.propertyKey = pa.pid
-        JOIN join_tu_u8 jtu
-            ON aa.JurisdictionCd = jtu.code_u8
-        JOIN taxingUnit tu
-            ON tu.taxingUnitID = jtu.taxingUnitID
-WHERE pa.pYear BETWEEN @pYearMin AND @pYearMax
-  and aa.WaterConExemption = 'Y'
-;
-
+truncate propertyAccountTaxingUnitExemptions;
  */
  
- 
- 
+
+
+
+
+
+set @p_skipTrigger = true;
  
 # HS - Local
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -1059,7 +288,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and GenHSExemption = 'Y'
-        and LocalGenHomesteadVal > 0
+        /* and LocalGenHomesteadVal > 0 */
       limit 1
     ) as laa
   
@@ -1140,7 +369,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and GenHSExemption = 'Y'
-        and StateGenHomesteadVal > 0
+        /* and StateGenHomesteadVal > 0 */
       limit 1
     ) as laa
   
@@ -1163,8 +392,8 @@ where not exists (
 
 
 select Ov65Exemption, count(*) from conversionDB.AppraisalAccount group by Ov65Exemption;
-select TaxYear, PropertyKey, JurisdictionCd,Ov65Exemption, LocalOver65Val From conversionDB.AppraisalAccount aa where aa.Ov65Exemption = 'Y' and LocalOver65Val > 0; -- OV65-Local
-select TaxYear, PropertyKey, JurisdictionCd,Ov65Exemption, StateOver65Val From conversionDB.AppraisalAccount aa where aa.Ov65Exemption = 'Y' and StateOver65Val > 0; -- OV65-State
+select TaxYear, PropertyKey, JurisdictionCd,Ov65Exemption, LocalOver65Val From conversionDB.AppraisalAccount aa where aa.Ov65Exemption = 'Y' /* and LocalOver65Val > 0 */; -- OV65-Local
+select TaxYear, PropertyKey, JurisdictionCd,Ov65Exemption, StateOver65Val From conversionDB.AppraisalAccount aa where aa.Ov65Exemption = 'Y' /* and StateOver65Val > 0 */; -- OV65-State
 
 
 # OV65 - Local
@@ -1226,7 +455,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and Ov65Exemption = 'Y'
-        and LocalOver65Val > 0
+        /* and LocalOver65Val > 0 */
       limit 1
     ) as laa
   
@@ -1307,7 +536,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and Ov65Exemption = 'Y'
-        and StateOver65Val > 0
+        /* and StateOver65Val > 0 */
       limit 1
     ) as laa
   
@@ -1332,8 +561,8 @@ where not exists (
 
 
 select Ov65SSExemption, count(*) from conversionDB.AppraisalAccount group by Ov65SSExemption;
-select TaxYear, PropertyKey, JurisdictionCd,Ov65SSExemption, LocalOver65SurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.Ov65SSExemption = 'Y' and LocalOver65SurvivingSpouseVal > 0; -- OV65S-Local
-select TaxYear, PropertyKey, JurisdictionCd,Ov65SSExemption, StateOver65SurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.Ov65SSExemption = 'Y' and StateOver65SurvivingSpouseVal > 0; -- OV65S-State
+select TaxYear, PropertyKey, JurisdictionCd,Ov65SSExemption, LocalOver65SurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.Ov65SSExemption = 'Y' /* and LocalOver65SurvivingSpouseVal > 0 */; -- OV65S-Local
+select TaxYear, PropertyKey, JurisdictionCd,Ov65SSExemption, StateOver65SurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.Ov65SSExemption = 'Y' /* and StateOver65SurvivingSpouseVal > 0 */; -- OV65S-State
 
 
 # OV65S - Local
@@ -1396,7 +625,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and Ov65SSExemption = 'Y'
-        and LocalOver65SurvivingSpouseVal > 0
+        /* and LocalOver65SurvivingSpouseVal > 0 */
       limit 1
     ) as laa
   
@@ -1475,7 +704,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and Ov65SSExemption = 'Y'
-        and StateOver65SurvivingSpouseVal > 0
+        /* and StateOver65SurvivingSpouseVal > 0 */
       limit 1
     ) as laa
   
@@ -1499,8 +728,8 @@ where not exists (
 
 
 select DPExemption, count(*) from conversionDB.AppraisalAccount group by DPExemption;
-select TaxYear, PropertyKey, JurisdictionCd,DPExemption, LocalDPVal From conversionDB.AppraisalAccount aa where aa.DPExemption = 'Y' and LocalDPVal > 0; -- DP-Local
-select TaxYear, PropertyKey, JurisdictionCd,DPExemption, StateDPVal From conversionDB.AppraisalAccount aa where aa.DPExemption = 'Y' and StateDPVal > 0; -- DP-State
+select TaxYear, PropertyKey, JurisdictionCd,DPExemption, LocalDPVal From conversionDB.AppraisalAccount aa where aa.DPExemption = 'Y' /* and LocalDPVal > 0 */; -- DP-Local
+select TaxYear, PropertyKey, JurisdictionCd,DPExemption, StateDPVal From conversionDB.AppraisalAccount aa where aa.DPExemption = 'Y' /* and StateDPVal > 0 */; -- DP-State
 
 # DP - Local
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -1562,7 +791,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and DPExemption = 'Y'
-        and LocalDPVal > 0
+        /* and LocalDPVal > 0 */
       limit 1
     ) as laa
   
@@ -1646,7 +875,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and DPExemption = 'Y'
-        and StateDPVal > 0
+        /* and StateDPVal > 0 */
       limit 1
     ) as laa
   
@@ -1670,8 +899,8 @@ where not exists (
 
 
 select DSSExemption, count(*) from conversionDB.AppraisalAccount group by DSSExemption;
-select TaxYear, PropertyKey, JurisdictionCd,DSSExemption, LocalDisabledSurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.DSSExemption = 'Y' and LocalDisabledSurvivingSpouseVal > 0; -- DPS-Local
-select TaxYear, PropertyKey, JurisdictionCd,DSSExemption, StateDisabledSurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.DSSExemption = 'Y' and StateDisabledSurvivingSpouseVal > 0; -- DPS-State
+select TaxYear, PropertyKey, JurisdictionCd,DSSExemption, LocalDisabledSurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.DSSExemption = 'Y' /* and LocalDisabledSurvivingSpouseVal > 0 */; -- DPS-Local
+select TaxYear, PropertyKey, JurisdictionCd,DSSExemption, StateDisabledSurvivingSpouseVal From conversionDB.AppraisalAccount aa where aa.DSSExemption = 'Y' /* and StateDisabledSurvivingSpouseVal > 0 */; -- DPS-State
 
 # DPS - Local
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -1733,7 +962,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and DSSExemption = 'Y'
-        and LocalDisabledSurvivingSpouseVal > 0
+        /* and LocalDisabledSurvivingSpouseVal > 0 */
       limit 1
     ) as laa
   
@@ -1816,7 +1045,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and DSSExemption = 'Y'
-        and StateDisabledSurvivingSpouseVal > 0
+        /* and StateDisabledSurvivingSpouseVal > 0 */
       limit 1
     ) as laa
   
@@ -1843,7 +1072,7 @@ where not exists (
 
 
 select DVExemptionCd, count(*) from conversionDB.AppraisalAccount group by DVExemptionCd;
-select TaxYear, PropertyKey, JurisdictionCd,DPExemption, DVExemptionCd, DVVal From conversionDB.AppraisalAccount aa where DVVal > 0 and DVExemptionCd in ('HS', '11', 'XHDV'); -- DVHS
+select TaxYear, PropertyKey, JurisdictionCd,DPExemption, DVExemptionCd, DVVal From conversionDB.AppraisalAccount aa  where /* DVVal > 0 and */  DVExemptionCd in ('HS', 'XHDV'); -- DVHS
 
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
 exemptionCode,
@@ -1903,8 +1132,8 @@ select
         laa.pYear = tax.pYear
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
-        and DVExemptionCd in ('HS', '11', 'XHDV')
-        and DVVal > 0
+        and DVExemptionCd in ('HS', 'XHDV')
+        /* and DVVal > 0 */
       limit 1
     ) as laa
   
@@ -1948,10 +1177,11 @@ select DVExemptionCd as legacyCode,
          when DVExemptionCd in ('42') then 'DVHSS' -- Deceased Veteran Surviving Child
            end as prodigyEquivalent,
        count(*) From conversionDB.AppraisalAccount aa
-                where DVVal > 0
+                /* where DVVal > 0 */
                                                       group by DVExemptionCd
 order by DVExemptionCd
 ;
+
 
 
 
@@ -2031,7 +1261,7 @@ select
         laa.pYear = tax.pYear
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
-        and DVVal > 0
+        /* and DVVal > 0 */
         and nullif(trim(DVExemptionCd), '') is not null
       limit 1
     ) as laa
@@ -2068,7 +1298,7 @@ where not exists (
 
 # Absolute Exemptions
 select AbsExemption, count(*) from conversionDB.AppraisalAccount group by AbsExemption;
-select TaxYear, PropertyKey, JurisdictionCd,AbsExemption, AbsVal, TotalTaxableVal From conversionDB.AppraisalAccount aa where AbsExemption = 'Y' and AbsVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,AbsExemption, AbsVal, TotalTaxableVal From conversionDB.AppraisalAccount aa where AbsExemption = 'Y' /* and AbsVal > 0 */;
 
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
 exemptionCode,
@@ -2128,7 +1358,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and AbsExemption = 'Y'
-        and AbsVal > 0
+        /* and AbsVal > 0 */
       limit 1
     ) as laa
   
@@ -2151,7 +1381,7 @@ where not exists (
 
 
 select FreeportExemption, count(*) from conversionDB.AppraisalAccount group by FreeportExemption;
-select TaxYear, PropertyKey, JurisdictionCd,FreeportExemption, FreeportVal From conversionDB.AppraisalAccount aa where FreeportExemption = 'Y' and FreeportVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,FreeportExemption, FreeportVal From conversionDB.AppraisalAccount aa where FreeportExemption = 'Y' /* and FreeportVal > 0 */;
 
 
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -2212,7 +1442,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and FreeportExemption = 'Y'
-        and FreeportVal > 0
+        /* and FreeportVal > 0 */
       limit 1
     ) as laa
   
@@ -2236,7 +1466,7 @@ where not exists (
 
 
 select GoodsInTranExemption, count(*) from conversionDB.AppraisalAccount group by GoodsInTranExemption;
-select TaxYear, PropertyKey, JurisdictionCd,GoodsInTranExemption, GoodsInTransitVal From conversionDB.AppraisalAccount aa where GoodsInTranExemption = 'Y' and GoodsInTransitVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,GoodsInTranExemption, GoodsInTransitVal From conversionDB.AppraisalAccount aa where GoodsInTranExemption = 'Y' /* and GoodsInTransitVal > 0 */;
 
 
 
@@ -2298,7 +1528,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and GoodsInTranExemption = 'Y'
-        and GoodsInTransitVal > 0
+        /* and GoodsInTransitVal > 0 */
       limit 1
     ) as laa
   
@@ -2321,7 +1551,7 @@ where not exists (
 
 
 select SolarWindExemption, count(*) from conversionDB.AppraisalAccount group by SolarWindExemption;
-select TaxYear, PropertyKey, JurisdictionCd,SolarWindExemption, SolarWindVal From conversionDB.AppraisalAccount aa where SolarWindExemption = 'Y' and SolarWindVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,SolarWindExemption, SolarWindVal From conversionDB.AppraisalAccount aa where SolarWindExemption = 'Y' /* and SolarWindVal > 0 */;
 
 
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -2382,7 +1612,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and SolarWindExemption = 'Y'
-        and SolarWindVal > 0
+        /* and SolarWindVal > 0 */
       limit 1
     ) as laa
   
@@ -2409,7 +1639,7 @@ where not exists (
 
 
 select HistExemption, count(*) from conversionDB.AppraisalAccount group by HistExemption;
-select TaxYear, PropertyKey, JurisdictionCd,HistExemption, HistVal From conversionDB.AppraisalAccount aa where HistExemption = 'Y' and HistVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,HistExemption, HistVal From conversionDB.AppraisalAccount aa where HistExemption = 'Y' /* and HistVal > 0 */;
 
 
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -2470,7 +1700,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and HistExemption = 'Y'
-        and HistVal > 0
+        /* and HistVal > 0 */
       limit 1
     ) as laa
   
@@ -2493,14 +1723,14 @@ where not exists (
 
 # This is exemption is *not* a true exemption, even though it reduces the taxable value.  This is a Chapter 313 Abatement.
 select Hb1200Exemption, count(*) from conversionDB.AppraisalAccount group by Hb1200Exemption;
-select TaxYear, PropertyKey, JurisdictionCd,Hb1200Exemption, Hb1200Val From conversionDB.AppraisalAccount aa where Hb1200Exemption = 'Y' and Hb1200Val > 0;
+select TaxYear, PropertyKey, JurisdictionCd,Hb1200Exemption, Hb1200Val From conversionDB.AppraisalAccount aa where Hb1200Exemption = 'Y' /* and Hb1200Val > 0 */;
 
 
 
 
 
 select FTZExemption, count(*) from conversionDB.AppraisalAccount group by FTZExemption;
-select TaxYear, PropertyKey, JurisdictionCd,FTZExemption, FTZVal From conversionDB.AppraisalAccount aa where FTZExemption = 'Y' and FTZVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,FTZExemption, FTZVal From conversionDB.AppraisalAccount aa where FTZExemption = 'Y' /* and FTZVal > 0 */;
 
 
 
@@ -2562,7 +1792,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and FTZExemption = 'Y'
-        and FTZVal > 0
+        /* and FTZVal > 0 */
       limit 1
     ) as laa
   
@@ -2590,7 +1820,7 @@ select * from propertyAccountTaxingUnitExemptions order by pPropertyAccountTaxin
 
 
 select Min500Exemption, count(*) from conversionDB.AppraisalAccount group by Min500Exemption;
-select TaxYear, PropertyKey, JurisdictionCd,Min500Exemption, Min500ExemptionPct, Min500Val From conversionDB.AppraisalAccount aa where Min500Exemption = 'Y' and Min500Val > 0; -- EX366
+select TaxYear, PropertyKey, JurisdictionCd,Min500Exemption, Min500ExemptionPct, Min500Val From conversionDB.AppraisalAccount aa where Min500Exemption = 'Y' /* and Min500Val > 0 */; -- EX366
 
 
 
@@ -2652,7 +1882,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and Min500Exemption = 'Y'
-        and Min500Val > 0
+        /* and Min500Val > 0 */
       limit 1
     ) as laa
   
@@ -2676,7 +1906,7 @@ where not exists (
 
 
 select PollutionConExemption, count(*) from conversionDB.AppraisalAccount group by PollutionConExemption;
-select TaxYear, PropertyKey, JurisdictionCd,PollutionConExemption, PollutionConExemptionPct, PollutionControlVal From conversionDB.AppraisalAccount aa where PollutionConExemption = 'Y' and PollutionControlVal > 0; -- PC
+select TaxYear, PropertyKey, JurisdictionCd,PollutionConExemption, PollutionConExemptionPct, PollutionControlVal From conversionDB.AppraisalAccount aa where PollutionConExemption = 'Y' /* and PollutionControlVal > 0 */; -- PC
 
 
 insert into propertyAccountTaxingUnitExemptions (pPropertyAccountTaxingUnitID,
@@ -2737,7 +1967,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and PollutionConExemption = 'Y'
-        and PollutionControlVal > 0
+        /* and PollutionControlVal > 0 */
       limit 1
     ) as laa
   
@@ -2763,7 +1993,7 @@ where not exists (
 
 
 select AbatementExemption, count(*) from conversionDB.AppraisalAccount group by AbatementExemption;
-select TaxYear, PropertyKey, JurisdictionCd,AbatementExemption, AbatementExemptionPct, AbatementVal, SpecAbatementVal From conversionDB.AppraisalAccount aa where AbatementExemption = 'Y' and (AbatementVal > 0 or SpecAbatementVal > 0); -- AB
+select TaxYear, PropertyKey, JurisdictionCd,AbatementExemption, AbatementExemptionPct, AbatementVal, SpecAbatementVal From conversionDB.AppraisalAccount aa where AbatementExemption = 'Y' /* and (AbatementVal > 0 or SpecAbatementVal > 0)*/; -- AB
 -- Keep an eye out for records with SpecialAbatementVal!  If we run into one with a value there, we'll need to seek clarity from the client on what's different about that abatement!
 
 
@@ -2826,7 +2056,7 @@ select
         and laa.PropertyKey = tax.pID
         and laa.JurisdictionCd = tu.taxingUnitCode
         and AbatementExemption = 'Y'
-        and AbatementVal > 0
+        /* and AbatementVal > 0 */
       limit 1
     ) as laa
   
@@ -2857,9 +2087,68 @@ select TaxYear, PropertyKey, JurisdictionCd,MiscExemption, MiscVal, SpecMiscExem
 
 
 select WaterConExemption, count(*) from conversionDB.AppraisalAccount group by WaterConExemption;
-select TaxYear, PropertyKey, JurisdictionCd,WaterConExemption, WaterConExemptionPct, WaterConVal From conversionDB.AppraisalAccount aa where WaterConExemption = 'Y' and waterConVal > 0;
+select TaxYear, PropertyKey, JurisdictionCd,WaterConExemption, WaterConExemptionPct, WaterConVal From conversionDB.AppraisalAccount aa where WaterConExemption = 'Y' /* and waterConVal > 0 */;
 -- Keep an eye out for records with a WaterConExemption exemption!  If we run into one, we'll need to seek clarity from the client on what it represents!
 
+
+
+
+-- Properties can have more than one DV, but the legacy system doesn't separate their exempt value by DV type - so we have to attribute the DV exemption value to the "best fit".
+# Preview -- anything with an exemptionRank > 1 is going to have its value zero'd-out
+with DVs as (
+select
+  pYear,
+  pID,
+  pVersion,
+  pRollCorr,
+  exemptionCode,
+  count(*) over (partition by pPropertyAccountTaxingUnitID) as DVCount,
+  rank() over (partition by pPropertyAccountTaxingUnitID order by exemptionRank, exemptionCode desc) as exemptionRank,
+  totalExemptionAmount
+from propertyAccountTaxingUnitExemptions ex
+join propertyAccountTaxingUnitTaxable tax using (pPropertyAccountTaxingUnitID)
+join lateral (
+  select case exemptionCode
+  when 'DV-UD' then 1
+  when 'DVHS' then 2
+  when 'DVHSS' then 3
+  else 100
+  end as exemptionRank
+  ) er
+where exemptionCode like 'DV%'
+order by pPropertyAccountTaxingUnitID)
+
+select *
+  from DVs where DVcount > 1 and totalExemptionAmount > 0;
+;
+
+
+with DVs as (
+select pPropertyAccountTaxingUnitExemptionID, exemptionCode,
+       count(*) over (partition by pPropertyAccountTaxingUnitID) as DVCount,
+  rank() over (partition by pPropertyAccountTaxingUnitID order by exemptionRank, exemptionCode desc) as exemptionRank,
+  totalExemptionAmount
+from propertyAccountTaxingUnitExemptions paetu
+join lateral (
+  select case exemptionCode
+  when 'DV-UD' then 1
+  when 'DVHS' then 2
+  when 'DVHSS' then 3
+  else 100
+  end as exemptionRank
+  ) er
+where exemptionCode like 'DV%'
+order by pPropertyAccountTaxingUnitID)
+
+update
+  propertyAccountTaxingUnitExemptions ex
+join DVs
+  using (pPropertyAccountTaxingUnitExemptionID)
+set
+  ex.localExemptionAmount = 0,
+  ex.exemptionAmount = 0,
+  ex.totalExemptionAmount = 0
+where DVs.exemptionRank > 1;
 
 
 
@@ -2885,21 +2174,82 @@ join propertyAccountTaxingUnitExemptions ex using (ppropertyAccountTaxingUnitExe
 where re.includeExemptionCount <> ex.includeExemptionCount;
 
 
+set sql_safe_updates = false;
 update rankExemptions re
 join propertyAccountTaxingUnitExemptions ex using (ppropertyAccountTaxingUnitExemptionID)
 set ex.includeExemptionCount = re.includeExemptionCount
 where re.includeExemptionCount <> ex.includeExemptionCount;
-
+set sql_safe_updates = true;
 
 drop temporary table if exists rankExemptions;
 
+select includeExemptionCount, count(*)
+from propertyAccountTaxingUnitExemptions
+  group by includeExemptionCount;
 
 
 
 
 
 
-# Validate.
+-- Look for Exemption Discrepancies
+with exemptionsInTaxables as (
+select
+  pa.pAccountID,
+  p.pYear,
+  p.pID,
+  p.pVersion,
+  p.pRollCorr,
+  pa.ownerID,
+  ex.exemptionCode
+from property p
+join propertyCurrent using (pYear, pID, pVersion, pRollCorr)
+join propertyAccount pa using (pYear, pID, pVersion, pRollCorr)
+join propertyTaxingUnit ptu using (pYear, pID, pVersion, pRollCorr)
+join propertyAccountTaxingUnitTaxable tax using (pAccountID, pTaxingUnitID)
+join propertyAccountTaxingUnitExemptions ex using (pPropertyAccountTaxingUnitID)
+where not p.inactive
+group by pAccountID, exemptionCode),
+
+  exemptionsInPAE as (
+                   select pa.pAccountID,
+    p.pYear,
+  p.pID,
+  p.pVersion,
+  p.pRollCorr,
+  pa.ownerID,
+  ex.exemptionCode
+from property p
+join propertyCurrent using (pYear, pID, pVersion, pRollCorr)
+join propertyAccount pa using (pYear, pID, pVersion, pRollCorr)
+join propertyAccountExemptions ex using (paccountID)
+where not p.inactive
+
+), allExemptions as (
+  select * from exemptionsInPAE
+union
+select * from exemptionsInTaxables)
+
+
+select *
+from allExemptions a
+left join lateral (
+  select true as inTaxables
+  from exemptionsInTaxables t
+  where t.pAccountID = a.pAccountID and t.exemptionCode = a.exemptionCode
+  ) t on true
+
+left join lateral (
+  select true as inPAE
+  from exemptionsInPAE pae
+  where pae.pAccountID = a.pAccountID and pae.exemptionCode = a.exemptionCode
+  ) pae on true
+
+where not t.inTaxables <=> pae.inPAE;
+
+
+
+# Validate.  The only thing that should pop up here is a property in a jurisdiction with a Chapter 313 Abatement (since we aren't carrying that as an exemption)
 select
   p.inactive,
   p.pYear,
@@ -2916,7 +2266,11 @@ select
   tax.cbTaxLimitationValue,
   tax.netAppraisedValue,
   ex.*,
-  tax.taxableValue
+
+  e.expectedExemptionValue,
+  tax.taxableValue,
+  e.expectedTaxableValue,
+  legacy.*
   from property p
   join propertyAccount pa
     using (pYear, pID, pVersion, pRollCorr)
@@ -2927,19 +2281,136 @@ select
   join propertyAccountTaxingUnitTaxable tax
     using (pTaxingUnitID, pAccountID)
   join lateral (
-    select netAppraisedValue - tax.taxableValue as expectedTaxableValue
-    ) e
-  join lateral (
     select
       count(*) as exemptionRecords,
       group_concat(distinct exemptionCode order by exemptionCode) as exemptionCodes,
       ifnull(sum(ex.localExemptionAmount),0) as localExemptionAmount,
       ifnull(sum(ex.exemptionAmount),0) as stateExemptionAmount,
-      ifnull(sum(ex.totalExemptionAmount),0) as totalExemptionAmount
+      ifnull(sum(ex.totalExemptionAmount),0) as totalExemptionAmount,
+      json_arrayagg(
+      json_object(
+        'exemptionCode', ex.exemptionCode,
+        'calculationType',ex.calculationType,
+        'localExemptionAmount', ex.localExemptionAmount,
+        'exemptionAmount', ex.exemptionAmount,
+        'totalExemptionAmount', ex.totalExemptionAmount
+      )
+      ) as exemptionDetails
       from propertyAccountTaxingUnitExemptions ex
       where
         ex.pPropertyAccountTaxingUnitID = tax.pPropertyAccountTaxingUnitID
     ) ex
+    join lateral (
+    select netAppraisedValue - tax.taxableValue as expectedExemptionValue,
+           netAppraisedValue - ex.totalExemptionAmount as expectedTaxableValue
+    ) e
+    join lateral (
+      select
+        exq.*,
+        DVExemptionCd,
+        LocalGenHomesteadVal, StateGenHomesteadVal,
+        LocalOver65Val, StateOver65Val, LocalOver65SurvivingSpouseVal, StateOver65SurvivingSpouseVal,
+        LocalDPVal,StateDPVal , LocalDisabledSurvivingSpouseVal , StateDisabledSurvivingSpouseVal ,
+        DVVal,
+        AbsVal,
+        FreeportVal,
+        GoodsInTransitVal,
+        SolarWindVal,
+        HistVal ,
+        Hb1200Val ,
+        FTZVal ,
+        Min500Val,
+        PollutionControlVal ,
+        AbatementVal , SpecAbatementVal ,
+        MiscVal , SpecMiscExemptionVal ,
+        WaterConVal
+      from conversionDB.AppraisalAccount aa
+      join lateral (
+        select group_concat(exq.exemptionCode order by exq.exemptionCode) as exemptionCodes
+        from conversionDB.AccountJurisdictionExQualify exq
+        where exq.pYear = tax.pyear and exq.PropertyKey = tax.pID
+        ) exq
+      where aa.pYear = tax.pYear and aa.PropertyKey = tax.pID and aa.JurisdictionCd = tu.taxingUnitCode
+    ) legacy
   where
     not p.inactive
-    and e.expectedTaxableValue <> tax.taxableValue;
+    and e.expectedTaxableValue <> tax.taxableValue
+
+# and aa.pYear > 2020
+#  and PropertyKey = 1518 -- great sample!  Ag, Timber, and an HS Cap!
+#  and PropertyKey in (16796,13081,93377) -- Ronnie says these properties have CBs
+# and limitationValue <> HomesiteCapLossVal and HomesiteCapLossVal > 0 -- Potentially, CB and HB Caps
+# and TotalAppraisedVal <> calcs.appraisedValue - calcs.limitationValue -- Look for bad calcs
+# and calcs.netAppraisedValue - legacyExemptionValue <> totaltaxableVal -- Look for more bad calcs
+# and RestrictedUseTimberProdVal > 0  -- Probably Timber 78, but there are no matches.  Woohoo!
+
+  order by marketValue desc
+;
+
+
+
+
+
+
+
+
+
+
+
+
+# Look for instances where we have a missing owner and/or missing taxing unit association
+select
+  pAccountID,
+  pTaxingUnitID,
+  
+  pYear,
+  PropertyKey as pID,
+  0 as pVersion,
+  0 as pRollCorr,
+ 
+  if(ownerPct <> 100, true, false) as isUDI,
+  ownerKey as ownerID,
+  
+  ownerPct,
+  
+  taxingUnitID,
+  taxingUnitPct,
+  JurisdictionCd,
+  
+  aa.TotalMarketVal as marketValue
+FROM conversionDB.AppraisalAccount aa
+
+
+left join lateral (
+  select pa.pAccountID, pa.ownerPct
+  from propertyAccount pa
+  where pa.pyear = aa.pyear
+  and pa.pID = aa.PropertyKey
+  and pa.pVersion = 0
+  and pa.pRollCorr = 0
+  and pa.ownerID = aa.ownerKey
+  ) pa on true
+
+  
+left join lateral (
+  select ptu.pTaxingUnitID, ptu.jurisdictionPct as taxingUnitPct, ptu.taxingUnitID, ifnull(rates.totalTaxRate,0) as totalTaxRate
+
+  from propertyTaxingUnit ptu
+  join taxingUnit tu using (taxingUnitID)
+  left join lateral (
+    select totalTaxRate
+    from taxingUnitVersion tuv
+    join taxingUnitTaxRates rates using (versionID)
+    where tuv.taxingUnitID = ptu.taxingUnitID
+    and tuv.taxingUnitYr = aa.pyear
+    order by active desc
+    limit 1
+    ) rates on true
+  where ptu.pyear = aa.pyear
+  and ptu.pID = aa.PropertyKey
+  and ptu.pVersion = 0
+  and ptu.pRollCorr = 0
+  and tu.taxingUnitCode = aa.JurisdictionCd
+  ) ptu on true
+
+where ptu.ptaxingUnitID is null or pa.paccountID is null;
