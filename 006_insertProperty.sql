@@ -249,7 +249,8 @@ SELECT DISTINCT
         ELSE aa.TotalTaxableVal
     END                                 AS ownerNetAppraisedValue,
     aa.TotalMarketVal                   AS ownerMarketValue,
-    aa.TotalTaxableVal                  AS ownerAppraisedValue,
+    aa.TotalMarketVal - 
+        aa.ProductivityLossVal          AS ownerAppraisedValue,
     aa.TotalImprovementVal              AS ownerImprovementValue,
     aa.TotalLandVal                     AS ownerLandValue,
     aa.OtherImprovementVal              AS ownerImprovementNHSValue,
@@ -257,7 +258,7 @@ SELECT DISTINCT
     COALESCE(aa.AgLandMarketVal, 0)
         - COALESCE(aa.AgLandProdVal, 0)  AS ownerAgExclusionValue,
     aa.HomesiteLandVal                  AS ownerLandHSValue,
-    aa.OtherLandVal                     AS ownerLandNHSValue,
+      COALESCE(aa.OtherLandVal,0) + COALESCE(aa.UnqualAgTimberLandVal,0) AS ownerLandNHSValue,
     aa.HomesiteImprovementVal           AS ownerImprovementHSValue,
     aa.TotalNewTaxableVal               AS ownerNewValue,
     aa.TimberLandProdVal                AS ownerTimberValue,
@@ -379,6 +380,8 @@ insert ignore into propertyMarketValue (
     improvementValue,
     landValue,
     landHSValue,
+    landNHSValue,
+
     suExclusionValue,
     bppNewValue,
     landNewValue,
@@ -427,14 +430,17 @@ SELECT
   aa.HomesiteImprovementVal          AS improvementHSValue,
   aa.HomesiteNewLandVal              AS landNewHSValue,
   aa.TotalImprovementVal             AS improvementValue,
+  
   aa.TotalLandVal                    AS landValue,
   aa.HomesiteLandVal                 AS landHSValue,
+  COALESCE(aa.OtherLandVal,0) + COALESCE(aa.UnqualAgTimberLandVal,0) AS landNHSValue,
+
   aa.ProductivityLossVal             AS suExclusionValue,
   COALESCE(aa.OtherNewPersonalVal, 0) + COALESCE(aa.HomesitePersonalVal, 0) AS bppNewValue,
   COALESCE(aa.HomesiteNewLandVal,0) + COALESCE(aa.HomesiteNewTaxableLandVal,0)         AS newLandValue,
   COALESCE(aa.HomesiteNewImprovementVal,0) + COALESCE(aa.OthNewTaxableImprovementVal,0) AS improvementNewValue,
   aa.OthNewTaxableLandVal            AS landNewNHSValue,
-  aa.OtherNewImprovementVal          AS improvementNHSValue,
+  aa.OtherImprovementVal          AS improvementNHSValue,
   aa.TimberLandMarketVal             AS timberLandMktValue,
   aa.TimberLandProdVal               AS timberValue,
   COALESCE(aa.TimberLandMarketVal,0) - COALESCE(aa.TimberLandProdVal,0) AS timberExclusionValue,
