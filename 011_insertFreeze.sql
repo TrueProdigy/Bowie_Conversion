@@ -26,7 +26,9 @@ select
 
 
 
-# Look for situations where there is an OV65 and a DP.  If these exist, and there is a freeze in play, we'll need to come up with a way to determine whether the freeze is associated with the DP or the OV65.
+# Look for situations where there is an OV65 and a DP.  
+-- If these exist, and there is a freeze in play, we'll need to come up with a way to determine whether the freeze is 
+-- associated with the DP or the OV65.
 select
   *
   from propertyAccountExemptions pae
@@ -45,6 +47,9 @@ select
       );
 
 
+#this condition needs to hold  :
+#    limitationAmt <> (limitationAmtPriorCompression + limitationCompressionAmt + limitationHITLAmt);
+
 insert into propertyAccountExemptionTaxLimitation
   (
   pExemptionID,
@@ -53,6 +58,7 @@ insert into propertyAccountExemptionTaxLimitation
   pYear,
   pVersion,
   pRollCorr,
+  startingLimitationAmt,
   limitationAmt,
   limitationAmtPriorCompression,
   limitationYr,
@@ -69,7 +75,8 @@ select
   pYear,
   pVersion,
   pRollCorr,
-  limitationAmt,
+  limitationAmt as startingLimitationAmt,
+  limitationAmt as limitationAmt,
   limitationAmtPriorCompression,
   limitationYr,
   limitationTransfer,
