@@ -8,31 +8,35 @@ set @p_user = 'TP Conversion';
 
 set @p_skipTrigger = 0;
 
--- truncate improvementDetailFeature;
--- delete from improvementDetail;
+SET FOREIGN_KEY_CHECKS = 0;
+truncate improvementDetailAdjustments;
+truncate improvementDetailFeature;
+truncate improvementDetail;
+truncate improvement;
+SET FOREIGN_KEY_CHECKS = 1;
 
 
-UPDATE bowie_appraisal.improvementDetail id
-JOIN bowie_appraisal.improvement i
-    ON id.pYear            = i.pYear
-   AND id.pID              = i.pID
-   AND id.pImprovementID   = i.pImprovementID
-JOIN conversionDB.AppraisalImprovement imp
-  ON imp.TaxYear           = i.pYear
- AND imp.PropertyKey       = i.pID
- AND imp.ImprovementSeq    = i.sequence
-JOIN conversionDB.Segment iseg
-  ON iseg.AuditTaxYear     = i.pYear
- AND iseg.PropertyKey      = i.pID
- AND iseg.ImprovementSeq   = imp.ImprovementSeq
-SET
-    id.area      = CASE
-                     WHEN COALESCE(iseg.CalculatedSize, 0) <= 0 THEN iseg.OverrideSize
-                     ELSE iseg.CalculatedSize
-                   END,
-    id.updatedBy = 'TP Conversion - ImpDetail'
-WHERE id.pYear = 2025
-  AND id.area <= 0;
+# UPDATE bowie_appraisal.improvementDetail id
+# JOIN bowie_appraisal.improvement i
+#     ON id.pYear            = i.pYear
+#    AND id.pID              = i.pID
+#    AND id.pImprovementID   = i.pImprovementID
+# JOIN conversionDB.AppraisalImprovement imp
+#   ON imp.TaxYear           = i.pYear
+#  AND imp.PropertyKey       = i.pID
+#  AND imp.ImprovementSeq    = i.sequence
+# JOIN conversionDB.Segment iseg
+#   ON iseg.AuditTaxYear     = i.pYear
+#  AND iseg.PropertyKey      = i.pID
+#  AND iseg.ImprovementSeq   = imp.ImprovementSeq
+# SET
+#     id.area      = CASE
+#                      WHEN COALESCE(iseg.CalculatedSize, 0) <= 0 THEN iseg.OverrideSize
+#                      ELSE iseg.CalculatedSize
+#                    END,
+#     id.updatedBy = 'TP Conversion - ImpDetail'
+# WHERE id.pYear = 2025
+#   AND id.area <= 0;
 
 
 
@@ -54,9 +58,6 @@ WHERE id.pYear = 2025
 # SET i.sequence = x.new_seq
 # WHERE  i.pYear = 2020;
 
-# delete from improvement i
-# where i.createdBy = 'TPConversion - ImprovementAdditive'
-# and i.imprvType = 'I';
 
 # UPDATE bowie_appraisal.improvement i
 # JOIN bowie_appraisal.codefile c
@@ -100,38 +101,149 @@ WHERE id.pYear = 2025
 
 
 -- improvement type mapping
-CREATE TABLE IF NOT EXISTS imp_type_map (
-  src_code VARCHAR(20) NOT NULL,
-  dst_code VARCHAR(20) NOT NULL,
-  PRIMARY KEY (src_code, dst_code)
-);
+# CREATE TABLE IF NOT EXISTS imp_type_map (
+#   src_code VARCHAR(20) NOT NULL,
+#   dst_code VARCHAR(20) NOT NULL,
+#   PRIMARY KEY (src_code, dst_code)
+# );
 
--- Refresh mappings (safe to re-run)
-REPLACE INTO imp_type_map (src_code, dst_code) VALUES
-('A1','R'),
-('A2','M'),
-('A3','R'),
-('A4','R'),
-('A5','R'),
-('A6','R'),
-('A7','R'),
-('A8','R'),
-('B1','R'),
-('B2','R'),
-('D2','R'),
-('E1','R'),
-('E2','M'),
-('E3','R'),
-('F1','C'),
-('F2','C'),
-('F3','C'),
-('F4','C'),
-('M1','M'),
-('M2','M'),
-('M3','M');
+-- Refresh mappings (safe to re-run) convert these post-go live
+# REPLACE INTO imp_type_map (src_code, dst_code) VALUES
+# ('A1','R'),
+# ('A2','M'),
+# ('A3','R'),
+# ('A4','R'),
+# ('A5','R'),
+# ('A6','R'),
+# ('A7','R'),
+# ('A8','R'),
+# ('B1','R'),
+# ('B2','R'),
+# ('D2','R'),
+# ('E1','R'),
+# ('E2','M'),
+# ('E3','R'),
+# ('F1','C'),
+# ('F2','C'),
+# ('F3','C'),
+# ('F4','C'),
+# ('M1','M'),
+# ('M2','M'),
+# ('M3','M');
+
+##### create indexes for faster inserts
+# CREATE INDEX idx_ai_year_prop_seq
+# ON conversionDB.AppraisalImprovement (TaxYear, PropertyKey, ImprovementSeq);
+# CREATE INDEX idx_imp_year_prop_seq
+# ON conversionDB.Improvement (AuditTaxYear, PropertyKey, ImprovementSeq);
+# CREATE INDEX idx_aa_year_prop_juris
+# ON conversionDB.AppraisalAccount (TaxYear, PropertyKey, JurisdictionType);
+# CREATE INDEX idx_ic_year_class
+# ON conversionDB.ImpClass (AuditTaxYear, ImprovementClass);
+# CREATE INDEX idx_pmd_year_key_types
+# ON conversionDB.PropertyModDetail (AuditTaxYear, PMFKey, PMFType, PropertyModFactorType);
+
+##### insert improvement NEED TO DO IT ONE YEAR AT A TIME
+DROP TEMPORARY TABLE IF EXISTS tmp_aa;
+
+CREATE TEMPORARY TABLE tmp_aa
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(a.TaxYear AS UNSIGNED) AS TaxYear,
+  CAST(a.PropertyKey AS UNSIGNED) AS PropertyKeyInt,
+  a.HomesiteNewImprovementVal,
+  a.OtherNewImprovementVal
+FROM conversionDB.AppraisalAccount a
+JOIN (
+    SELECT
+      CAST(TaxYear AS UNSIGNED) AS TaxYear,
+      PropertyKey,
+      MAX(cID) AS maxCID
+    FROM conversionDB.AppraisalAccount
+    WHERE TaxYear = @pYearMax
+      AND JurisdictionType = 'CAD'
+    GROUP BY CAST(TaxYear AS UNSIGNED), PropertyKey
+) mx
+  ON CAST(a.TaxYear AS UNSIGNED) = mx.TaxYear
+ AND a.PropertyKey = mx.PropertyKey
+ AND a.cID = mx.maxCID;
+
+ALTER TABLE tmp_aa
+  ADD PRIMARY KEY (TaxYear, PropertyKeyInt);
 
 
-INSERT INTO improvement (
+DROP TEMPORARY TABLE IF EXISTS tmp_imp;
+
+CREATE TEMPORARY TABLE tmp_imp
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(TaxYear AS UNSIGNED) AS TaxYear,
+  CAST(PropertyKey AS UNSIGNED) AS PropertyKeyInt,
+  ImprovementSeq,
+  PropUse,
+  Class,
+  YearBuilt,
+  DWFACTOR,
+  HomesiteCalcVal,
+  OtherCalcVal,
+  EconDepreFact,
+  FunctDepreFact,
+  PhyDepreFact,
+  MarketValue,
+  HomesiteAdjustedValue,
+  OtherAdjusted,
+  SquareFootage,
+  OtherAdditives,
+  HomesiteAdditives,
+  OtherExtra,
+  HomesiteExtra
+FROM conversionDB.AppraisalImprovement
+WHERE TaxYear = @pYearMax;
+
+ALTER TABLE tmp_imp
+  ADD INDEX idx_tmp_imp_join (TaxYear, PropertyKeyInt, ImprovementSeq);
+
+
+DROP TEMPORARY TABLE IF EXISTS tmp_i;
+
+CREATE TEMPORARY TABLE tmp_i
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(AuditTaxYear AS UNSIGNED) AS AuditTaxYear,
+  CAST(PropertyKey AS UNSIGNED) AS PropertyKeyInt,
+  ImprovementSeq,
+  HomesiteFlag,
+  OverrideHomesiteImprovementFlag,
+  ImprovementEffectiveAge,
+  ImprovementCondition,
+  ImprovementDescription,
+  ImprovementPmfkey
+FROM conversionDB.Improvement
+WHERE AuditTaxYear = @pYearMax;
+
+ALTER TABLE tmp_i
+  ADD INDEX idx_tmp_i_join (AuditTaxYear, PropertyKeyInt, ImprovementSeq);
+
+DROP TEMPORARY TABLE IF EXISTS tmp_ic;
+
+CREATE TEMPORARY TABLE tmp_ic
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(AuditTaxYear AS UNSIGNED) AS AuditTaxYear,
+  TRIM(ImprovementClass) AS ImprovementClass,
+  ImprovementDescescription
+FROM conversionDB.ImpClass
+WHERE AuditTaxYear = @pYearMax;
+
+ALTER TABLE tmp_ic
+  ADD INDEX idx_tmp_ic (AuditTaxYear, ImprovementClass);
+
+
+INSERT IGNORE INTO improvement (
   pyear,
   pid,
   pVersion,
@@ -216,7 +328,7 @@ SELECT
   'F'                                       AS valueSource,
   i.ImprovementCondition                    AS imprvCondition,
   i.ImprovementDescription                  AS imprvComment,
-  m.dst_code                                AS imprvType,
+  imp.PropUse                               AS imprvType,
   IF(imp.PhyDepreFact IS NULL, 1.00, imp.PhyDepreFact) AS imprvAreaModifier,
   1 AS applyImprvAreaModifier,
   CAST(
@@ -228,7 +340,7 @@ SELECT
   ) AS imprvModifier,
   JSON_OBJECT(
       'improvement', JSON_OBJECT(
-          'PropertyKey',   imp.PropertyKey,
+          'PropertyKey',   imp.PropertyKeyInt,
           'Tax Year',      imp.TaxYear,
           'Year Built',    imp.YearBuilt,
           'SquareFootage', imp.SquareFootage,
@@ -241,37 +353,37 @@ SELECT
   @createdBy,
   NOW()
 FROM property p
-JOIN valuationsPropAssoc vpa
+STRAIGHT_JOIN valuationsPropAssoc vpa
   ON vpa.pid       = p.pid
  AND vpa.pYear     = p.pYear
  AND vpa.pRollCorr = p.pRollCorr
  AND vpa.pVersion  = p.pVersion
-JOIN valuationsCostApproach vca USING (pValuationID)
-JOIN conversionDB.AppraisalAccount aa
-  ON aa.TaxYear         = p.pYear
- AND aa.PropertyKey     = p.pid
- AND aa.JurisdictionType = 'CAD'
-JOIN conversionDB.AppraisalImprovement imp
-  ON imp.TaxYear     = p.pYear
- AND imp.PropertyKey = p.pid
-JOIN conversionDB.Improvement i
-  ON i.AuditTaxYear  = p.pYear
- AND i.PropertyKey    = p.pid
- AND i.ImprovementSeq = imp.ImprovementSeq
-LEFT JOIN conversionDB.ImpClass ic
-  ON ic.AuditTaxYear     = p.pYear
- AND ic.ImprovementClass = imp.Class
-JOIN imp_type_map m
-  ON m.src_code = i.ClientComptrollerCategoryCode
-LEFT JOIN conversionDB.PropertyModDetail pmd
-  ON pmd.AuditTaxYear = p.pYear
- AND pmd.PMFKey       = i.ImprovementPmfkey
- AND pmd.PMFType      = 'IMPIMP'
- AND pmd.PropertyModFactorType = 'MKTF'
-WHERE p.pYear BETWEEN @pYearMin AND @pYearMax;
+STRAIGHT_JOIN valuationsCostApproach vca
+  ON vca.pValuationID = vpa.pValuationID
+STRAIGHT_JOIN tmp_aa aa
+  ON aa.TaxYear = p.pYear
+ AND aa.PropertyKeyInt = p.pid
+STRAIGHT_JOIN tmp_i i
+  ON i.AuditTaxYear = p.pYear
+ AND i.PropertyKeyInt = p.pid
+STRAIGHT_JOIN tmp_imp imp
+  ON imp.TaxYear = p.pYear
+ AND imp.PropertyKeyInt = p.pid
+ AND imp.ImprovementSeq = i.ImprovementSeq
+LEFT JOIN tmp_ic ic
+  ON ic.AuditTaxYear = p.pYear
+ AND ic.ImprovementClass = TRIM(imp.Class)
+# JOIN imp_type_map m
+#   ON m.src_code = i.ClientComptrollerCategoryCode
+# LEFT JOIN conversionDB.PropertyModDetail pmd
+#   ON pmd.AuditTaxYear = p.pYear
+#  AND pmd.PMFKey       = i.ImprovementPmfkey
+#  AND pmd.PMFType      = 'IMPIMP'
+#  AND pmd.PropertyModFactorType = 'MKTF'
+WHERE p.pYear = @pYearMax;
 
 
-
+##### insert improvement additive (these are converted from "addictive")
 set @createDt = now();
 set @createdBy = 'TPConversion - ImprovementAdditive';
 
@@ -281,7 +393,160 @@ set @pYearMax = 2025;
 set @p_user = 'TP Conversion';
 
 -- had to insert one year at a time for this to work
-INSERT INTO improvement (
+DROP TEMPORARY TABLE IF EXISTS tmp_aa;
+
+CREATE TEMPORARY TABLE tmp_aa
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(a.TaxYear AS UNSIGNED) AS TaxYear,
+  CAST(a.PropertyKey AS UNSIGNED) AS PropertyKeyInt,
+  a.HomesiteNewImprovementVal,
+  a.OtherNewImprovementVal
+FROM conversionDB.AppraisalAccount a
+JOIN (
+    SELECT
+      CAST(TaxYear AS UNSIGNED) AS TaxYear,
+      PropertyKey,
+      MAX(cID) AS maxCID
+    FROM conversionDB.AppraisalAccount
+    WHERE TaxYear = @pYearMax
+      AND JurisdictionType = 'CAD'
+    GROUP BY CAST(TaxYear AS UNSIGNED), PropertyKey
+) mx
+  ON CAST(a.TaxYear AS UNSIGNED) = mx.TaxYear
+ AND a.PropertyKey = mx.PropertyKey
+ AND a.cID = mx.maxCID;
+
+ALTER TABLE tmp_aa
+  ADD PRIMARY KEY (TaxYear, PropertyKeyInt);
+
+
+DROP TEMPORARY TABLE IF EXISTS tmp_imp;
+
+CREATE TEMPORARY TABLE tmp_imp
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(TaxYear AS UNSIGNED) AS TaxYear,
+  CAST(PropertyKey AS UNSIGNED) AS PropertyKeyInt,
+  ImprovementSeq,
+  PropUse,
+  Class,
+  YearBuilt,
+  DWFACTOR,
+  HomesiteCalcVal,
+  OtherCalcVal,
+  EconDepreFact,
+  FunctDepreFact,
+  PhyDepreFact,
+  MarketValue,
+  HomesiteAdjustedValue,
+  OtherAdjusted,
+  SquareFootage,
+  OtherAdditives,
+  HomesiteAdditives,
+  OtherExtra,
+  HomesiteExtra
+FROM conversionDB.AppraisalImprovement
+WHERE TaxYear = @pYearMax;
+
+ALTER TABLE tmp_imp
+  ADD INDEX idx_tmp_imp_join (TaxYear, PropertyKeyInt, ImprovementSeq);
+
+
+DROP TEMPORARY TABLE IF EXISTS tmp_i;
+
+CREATE TEMPORARY TABLE tmp_i
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(AuditTaxYear AS UNSIGNED) AS AuditTaxYear,
+  CAST(PropertyKey AS UNSIGNED) AS PropertyKeyInt,
+  ImprovementSeq,
+  HomesiteFlag,
+  OverrideHomesiteImprovementFlag,
+  ImprovementEffectiveAge,
+  ImprovementCondition,
+  ImprovementDescription,
+  ImprovementPmfkey
+FROM conversionDB.Improvement
+WHERE AuditTaxYear = @pYearMax;
+
+ALTER TABLE tmp_i
+  ADD INDEX idx_tmp_i_join (AuditTaxYear, PropertyKeyInt, ImprovementSeq);
+
+
+DROP TEMPORARY TABLE IF EXISTS tmp_ia;
+
+CREATE TEMPORARY TABLE tmp_ia
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(AuditTaxYear AS UNSIGNED) AS AuditTaxYear,
+  CAST(PropertyKey  AS UNSIGNED) AS PropertyKeyInt,
+  ImprovementSeq,
+  cID,
+  TRIM(ImprovementAdditiveDescription) AS ImprovementAdditiveDescription,
+  ImprovementAdditiveValue
+FROM conversionDB.ImprovementAdditive
+WHERE AuditTaxYear = @pYearMax;
+
+ALTER TABLE tmp_ia
+  ADD INDEX idx_tmp_ia_join (AuditTaxYear, PropertyKeyInt, ImprovementSeq);
+
+DROP TEMPORARY TABLE IF EXISTS tmp_ap;
+
+CREATE TEMPORARY TABLE tmp_ap
+ENGINE=InnoDB
+AS
+SELECT
+  pYear, pID, pVersion, pRollCorr, pCostID, sequence,
+  stateCd, homesite, homesiteOverride, homesitePct,
+  units, stories, deprec, deprecGood, costSource,
+  imprvModifier, applyImprvAreaModifier, imprvAreaModifier,
+  calcAdjustmentFactor, calcAdjustmentPctWoutDeprec, newValueSource
+FROM improvement
+WHERE pYear = @pYearMax;
+
+-- use a normal index (non-unique)
+ALTER TABLE tmp_ap
+  ADD INDEX idx_tmp_ap_join (pYear, pID, sequence),
+  ADD INDEX idx_tmp_ap_key  (pYear, pID, pVersion, pRollCorr);
+
+DROP TEMPORARY TABLE IF EXISTS tmp_ap_max;
+
+CREATE TEMPORARY TABLE tmp_ap_max
+ENGINE=InnoDB
+AS
+SELECT
+  pYear,
+  pID,
+  MAX(sequence) AS max_seq
+FROM tmp_ap
+GROUP BY pYear, pID;
+
+ALTER TABLE tmp_ap_max
+  ADD PRIMARY KEY (pYear, pID);
+
+
+/* 3) Optional: make ImpClass lookup cheap (removes range-checked) */
+DROP TEMPORARY TABLE IF EXISTS tmp_ic;
+
+CREATE TEMPORARY TABLE tmp_ic
+ENGINE=InnoDB
+AS
+SELECT
+  CAST(AuditTaxYear AS UNSIGNED) AS AuditTaxYear,
+  TRIM(ImprovementClass)         AS ImprovementClass,
+  ImprovementDescescription
+FROM conversionDB.ImpClass
+WHERE AuditTaxYear = @pYearMax;
+
+ALTER TABLE tmp_ic
+  ADD INDEX idx_tmp_ic (AuditTaxYear, ImprovementClass);
+
+INSERT IGNORE INTO improvement (
     pYear,
     pID,
     pVersion,
@@ -317,6 +582,7 @@ INSERT INTO improvement (
     newValueSource,
     newValueType,
     imprvType,
+    valueSource,
     createdBy,
     createDt
 )
@@ -326,97 +592,91 @@ SELECT
     p.pVersion,
     p.pRollCorr,
     ap.pCostID,
-
-    (SELECT COALESCE(MAX(ap2.sequence), 0) FROM improvement ap2 WHERE ap2.pID = p.pid AND ap2.pYear = p.pYear AND ap2.sequence = imp.ImprovementSeq) +
-       ROW_NUMBER() OVER (ORDER BY ia.PropertyKey) AS sequence,
-
+    apm.max_seq
+  + ROW_NUMBER() OVER (
+      PARTITION BY p.pYear, p.pid
+      ORDER BY ia.PropertyKeyInt, ia.ImprovementSeq, ia.cID
+    ) AS sequence,
     ap.stateCd,
     ap.homesite,
     ap.homesiteOverride,
     ap.homesitePct,
-
     TRIM(ia.ImprovementAdditiveDescription)                        AS imprvDescription,
     TRIM(ia.ImprovementAdditiveDescription)                        AS imprvComment,
-
     100.00                                                         AS finishoutPct,
-
     ap.units,
     ap.stories,
     ap.deprec,
     ap.deprecGood,
-
     100.00                                                         AS economicAdj,
     100.00                                                         AS physicalAdj,
     100.00                                                         AS functionalAdj,
     100.00                                                         AS pctComplete,
-
     ap.costSource,
     0                                                               AS selectedCostValue,
-
     ap.imprvModifier,
     ap.applyImprvAreaModifier,
     ap.imprvAreaModifier,
-
     ia.ImprovementAdditiveValue                                     AS flatValue,
     ia.ImprovementAdditiveValue                                     AS improvementValue,
-
     ap.calcAdjustmentFactor,
     ap.calcAdjustmentPctWoutDeprec,
     ia.ImprovementAdditiveValue                                     AS calcNHSValue,
-
     'prodigy'                                                      AS sketchStatus,
     ap.newValueSource,
     'Full'                                                         AS newValueType,
     'I'                                                            AS imprvType,
-
+    'F'                                                            AS valueSource,
     @createdBy                                                     AS createdBy,
     NOW()                                                          AS createdDate
-
-FROM
-    property p
-JOIN valuationsPropAssoc vpa
+FROM property p
+STRAIGHT_JOIN valuationsPropAssoc vpa
   ON vpa.pid       = p.pid
  AND vpa.pYear     = p.pYear
  AND vpa.pRollCorr = p.pRollCorr
  AND vpa.pVersion  = p.pVersion
-JOIN valuationsCostApproach vca USING (pValuationID)
-JOIN conversionDB.AppraisalAccount aa
-  ON aa.TaxYear         = p.pYear
- AND aa.PropertyKey     = p.pid
- AND aa.JurisdictionType = 'CAD'
-JOIN conversionDB.AppraisalImprovement imp
-  ON imp.TaxYear     = p.pYear
- AND imp.PropertyKey = p.pid
-JOIN conversionDB.Improvement i
-  ON i.AuditTaxYear  = p.pYear
- AND i.PropertyKey    = p.pid
- AND i.ImprovementSeq = imp.ImprovementSeq
-LEFT JOIN conversionDB.ImpClass ic
-  ON ic.AuditTaxYear     = p.pYear
- AND ic.ImprovementClass = imp.Class
-JOIN imp_type_map m
-  ON m.src_code = i.ClientComptrollerCategoryCode
-LEFT JOIN conversionDB.PropertyModDetail pmd
-  ON pmd.AuditTaxYear = p.pYear
- AND pmd.PMFKey       = i.ImprovementPmfkey
- AND pmd.PMFType      = 'IMPIMP'
- AND pmd.PropertyModFactorType = 'MKTF'
-       join conversionDB.ImprovementAdditive ia
-            on ia.AuditTaxYear = p.pYear and ia.PropertyKey = p.pid
-            and ia.ImprovementSeq = imp.ImprovementSeq
-join improvement ap
-    on ap.pYear = p.pYear
-    and ap.pID = p.pid
-   and ap.sequence = imp.ImprovementSeq
-WHERE p.pYear = 2020;
+STRAIGHT_JOIN valuationsCostApproach vca
+  ON vca.pValuationID = vpa.pValuationID
+
+STRAIGHT_JOIN tmp_aa aa
+  ON aa.TaxYear        = p.pYear
+ AND aa.PropertyKeyInt = p.pid
+
+STRAIGHT_JOIN tmp_i i
+  ON i.AuditTaxYear    = p.pYear
+ AND i.PropertyKeyInt  = p.pid
+
+STRAIGHT_JOIN tmp_imp imp
+  ON imp.TaxYear        = p.pYear
+ AND imp.PropertyKeyInt = p.pid
+ AND imp.ImprovementSeq = i.ImprovementSeq
+
+/* additive rows */
+STRAIGHT_JOIN tmp_ia ia
+  ON ia.AuditTaxYear    = p.pYear
+ AND ia.PropertyKeyInt  = p.pid
+ AND ia.ImprovementSeq  = imp.ImprovementSeq
+
+/* base improvement row that the additive is “attached” to */
+STRAIGHT_JOIN tmp_ap ap
+  ON ap.pYear     = p.pYear
+ AND ap.pID       = p.pid
+ AND ap.sequence  = imp.ImprovementSeq
+
+/* max sequence per property/year */
+STRAIGHT_JOIN tmp_ap_max apm
+  ON apm.pYear = p.pYear
+ AND apm.pID   = p.pid
+
+/* optional lookup for description (if you still need it later) */
+LEFT JOIN tmp_ic ic
+  ON ic.AuditTaxYear      = p.pYear
+ AND ic.ImprovementClass  = TRIM(imp.Class)
+
+WHERE p.pYear = @pYearMax;
 
 
-# SET FOREIGN_KEY_CHECKS = 0;
-# truncate improvementDetailAdjustments;
-# truncate improvementDetailFeature;
-# truncate improvementDetail;
-#
-# SET FOREIGN_KEY_CHECKS = 1;
+
 
 # UPDATE improvementDetail i
 # JOIN bowie_appraisal.codefile c
@@ -427,7 +687,7 @@ WHERE p.pYear = 2020;
 # where i.pYear between 2020 and 2025;
 
 set @createDt = now();
-set @createdBy = 'TPConversion - insertImprovement';
+set @createdBy = 'TPConversion - insertImpDetail';
 
 set @pYearMin = 2020;
 set @pYearMax = 2025;
@@ -552,11 +812,11 @@ left join codefile c
     AND c.codeFileType = 'Improvement Detail'
     AND c.codeFileName = 'Type'
     AND c.codeName = SUBSTRING(TRIM(seg.DWSTRCODE), 1,20)
-WHERE p.pYear = 2020
- AND imp.TaxYear = 2020
-  AND i.AuditTaxYear = 2020
-  AND seg.TaxYear = 2020
-  AND s.AuditTaxYear = 2020;
+WHERE p.pYear = @pYearMax
+ AND imp.TaxYear = @pYearMax
+  AND i.AuditTaxYear = @pYearMax
+  AND seg.TaxYear = @pYearMax
+  AND s.AuditTaxYear = @pYearMax;
 
 # setting stateCd
 set @p_user = 'TP Conversion';
