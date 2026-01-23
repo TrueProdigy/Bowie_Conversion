@@ -249,7 +249,8 @@ SELECT DISTINCT
         ELSE aa.TotalTaxableVal
     END                                 AS ownerNetAppraisedValue,
     aa.TotalMarketVal                   AS ownerMarketValue,
-    aa.TotalTaxableVal                  AS ownerAppraisedValue,
+    aa.TotalMarketVal - 
+        aa.ProductivityLossVal          AS ownerAppraisedValue,
     aa.TotalImprovementVal              AS ownerImprovementValue,
     aa.TotalLandVal                     AS ownerLandValue,
     aa.OtherImprovementVal              AS ownerImprovementNHSValue,
@@ -257,7 +258,7 @@ SELECT DISTINCT
     COALESCE(aa.AgLandMarketVal, 0)
         - COALESCE(aa.AgLandProdVal, 0)  AS ownerAgExclusionValue,
     aa.HomesiteLandVal                  AS ownerLandHSValue,
-    aa.OtherLandVal                     AS ownerLandNHSValue,
+      COALESCE(aa.OtherLandVal,0) + COALESCE(aa.UnqualAgTimberLandVal,0) AS ownerLandNHSValue,
     aa.HomesiteImprovementVal           AS ownerImprovementHSValue,
     aa.TotalNewTaxableVal               AS ownerNewValue,
     aa.TimberLandProdVal                AS ownerTimberValue,
