@@ -143,13 +143,15 @@ insert into taxingUnitTaxRates (
 	taxRates,
 	totalTaxRate,
 	createDt,
-	createdBy)
+	createdBy,
+  taxLimitation)
 select versionID,
 		#concat('{"I&S": ',MO_RATE,',"M&O" : ',IS_RATE, '"No New Revenue" :',0 , ' , "Voter Approval" :',0,'}')
         json_object('I&S', COALESCE(tj.JurisdictionISRate, null), 'M&O', COALESCE(tj.MORate,null),'MCR', 0, 'No New Revenue', 0, 'Voter Approval', 0),
 	aj.TotalTaxRate,
 	@createDt,
-	@createdBy
+	@createdBy,
+  case when FrozenTaxCeilingFlag = 'T' then 1 else 0 end
 from taxingUnitVersion tv
 	join taxingUnit tu using (taxingUnitID)
     join conversionDB.Jurisdiction tj
