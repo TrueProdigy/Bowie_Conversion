@@ -509,7 +509,7 @@ SELECT
 FROM improvement
 WHERE pYear = @pYearMax;
 
--- use a normal index (non-unique)
+
 ALTER TABLE tmp_ap
   ADD INDEX idx_tmp_ap_join (pYear, pID, sequence),
   ADD INDEX idx_tmp_ap_key  (pYear, pID, pVersion, pRollCorr);
@@ -529,8 +529,6 @@ GROUP BY pYear, pID;
 ALTER TABLE tmp_ap_max
   ADD PRIMARY KEY (pYear, pID);
 
-
-/* 3) Optional: make ImpClass lookup cheap (removes range-checked) */
 DROP TEMPORARY TABLE IF EXISTS tmp_ic;
 
 CREATE TEMPORARY TABLE tmp_ic
@@ -657,18 +655,15 @@ STRAIGHT_JOIN tmp_ia ia
  AND ia.PropertyKeyInt  = p.pid
  AND ia.ImprovementSeq  = imp.ImprovementSeq
 
-/* base improvement row that the additive is “attached” to */
 STRAIGHT_JOIN tmp_ap ap
   ON ap.pYear     = p.pYear
  AND ap.pID       = p.pid
  AND ap.sequence  = imp.ImprovementSeq
 
-/* max sequence per property/year */
 STRAIGHT_JOIN tmp_ap_max apm
   ON apm.pYear = p.pYear
  AND apm.pID   = p.pid
 
-/* optional lookup for description (if you still need it later) */
 LEFT JOIN tmp_ic ic
   ON ic.AuditTaxYear      = p.pYear
  AND ic.ImprovementClass  = TRIM(imp.Class)
