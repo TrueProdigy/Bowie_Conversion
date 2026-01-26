@@ -7,96 +7,134 @@ set @pYearMax = 2025;
 set @p_user = 'TP Conversion';
 # SET FOREIGN_KEY_CHECKS = 0;
 # delete from personalRendition;
+# delete from propertyBppRenditionExtensionRequests;
 # SET FOREIGN_KEY_CHECKS = 1;
 
 ##### insert personalRendition
-# insert into personalRendition (
-# pID,
-# pYear,
-# receivedDt,
-# renderedValue,
-# granted,
-# lateRendition,
-# lateRenditionDt,
-# verified, -- rendition Accepted
-# addExtension,
-# extensionDt,
-# filingParty,
-# filingPartyPhone,
-# filingPartyEmail,
-# ownerName,
-# createdBy,
-# createDt
-# )
-# SELECT
-#   aa.PropertyKey AS pID,
-#   cast(aa.TaxYear as UNSIGNED ),
-#   DATE_FORMAT(STR_TO_DATE(aa.RenditionRcvdDt, '%Y%m%d'), '%Y-%m-%d 00:00:00') AS receivedDt,
-#   pp.RenderedValue AS renderedValue,
-#
-#   CASE
-#     WHEN aa.RenditionAccp = 'Y' THEN 1
-#     WHEN aa.RenditionAccp = 'N' THEN 0
-#     ELSE NULL
-#   END AS granted,
-#
-#   CASE
-#     WHEN aa.LateRendition = 'Y' THEN 1
-#     WHEN aa.LateRendition = 'N' THEN 0
-#     ELSE NULL
-#   END AS lateRendition,
-#
-#   CASE
-#     WHEN aa.LateRendition = 'Y'
-#      AND aa.RenditionRcvdDt REGEXP '^[0-9]{8}$'
-#     THEN DATE_FORMAT(STR_TO_DATE(aa.RenditionRcvdDt, '%Y%m%d'), '%Y-%m-%d 00:00:00')
-#     ELSE NULL
-#   END AS lateRenditionDt,
-#
-#   CASE
-#     WHEN aa.RenditionAccp = 'Y' THEN 1
-#     WHEN aa.RenditionAccp = 'N' THEN 0
-#     ELSE NULL
-#   END AS verified,
-#
-#   CASE
-#     WHEN aa.Renditiont1 = 'Y' OR aa.Renditiont2 = 'Y' THEN 1
-#     WHEN aa.Renditiont1 = 'N' AND aa.Renditiont2 = 'N' THEN 0
-#     ELSE NULL
-#   END AS addExtension,
-#
-#   CASE
-#     WHEN aa.Renditiont1 = 'Y' AND aa.Renditiont2 = 'N'
-#      AND aa.Renditiont1Dt REGEXP '^[0-9]{8}$'
-#     THEN DATE_FORMAT(STR_TO_DATE(aa.Renditiont1Dt, '%Y%m%d'), '%Y-%m-%d 00:00:00')
-#
-#     WHEN aa.Renditiont2 = 'Y'
-#      AND aa.Renditiont2Dt REGEXP '^[0-9]{8}$'
-#     THEN DATE_FORMAT(STR_TO_DATE(aa.Renditiont2Dt, '%Y%m%d'), '%Y-%m-%d 00:00:00')
-#
-#     ELSE NULL
-#   END AS extensionDt,
-#   LEFT(TRIM(COALESCE(pp.ContactName, '')), 45) as filingParty,
-#   LEFT(TRIM(COALESCE(pp.PhoneNumberOne, '')), 45) as filingPartyPhone,
-#   LEFT(TRIM(COALESCE(pp.EmailAddress, '')), 45) as filingPartyEmail,
-#   LEFT(TRIM(COALESCE(aa.OwnerName1, '')), 45) as ownerName,
-#   @createdBy,
-#   NOW()
-# FROM conversionDB.AppraisalAccount aa
-# JOIN conversionDB.AcctXREF axref
-#   ON axref.AuditTaxYear = aa.TaxYear
-#  AND axref.PropertyKey  = aa.PropertyKey
-#  AND axref.AcctXRefType = 'ACCT'
-# JOIN conversionDB.Account a
-#   ON a.AuditTaxYear = aa.TaxYear
-#  AND a.PropertyKey  = aa.PropertyKey
-# JOIN conversionDB.PersonalProperty pp
-#   ON pp.AuditTaxYear = aa.TaxYear
-#  AND pp.PropertyKey  = aa.PropertyKey
-#  AND pp.RenderedValue > 0
-# WHERE aa.pYear between @pYearMin and @pYearMax
-#   AND aa.JurisdictionType = 'CAD';
+insert into personalRendition (
+pID,
+pYear,
+receivedDt,
+renderedValue,
+granted,
+lateRendition,
+lateRenditionDt,
+verified, -- rendition Accepted
+addExtension,
+extensionDt,
+filingParty,
+filingPartyPhone,
+filingPartyEmail,
+ownerName,
+addrDeliveryLine,
+addrUnitDesignator,
+addrCity,
+addrZip,
+addrState,
+addrFreeForm,
+addrFreeForm1,
+addrFreeForm2,
+addrFreeForm3,
+createdBy,
+createDt
+)
+SELECT
+  aa.PropertyKey AS pID,
+  cast(aa.TaxYear as UNSIGNED ),
+  DATE_FORMAT(STR_TO_DATE(aa.RenditionRcvdDt, '%Y%m%d'), '%Y-%m-%d 00:00:00') AS receivedDt,
+  pp.RenderedValue AS renderedValue,
 
+  CASE
+    WHEN aa.RenditionAccp = 'Y' THEN 1
+    WHEN aa.RenditionAccp = 'N' THEN 0
+    ELSE NULL
+  END AS granted,
+
+  CASE
+    WHEN aa.LateRendition = 'Y' THEN 1
+    WHEN aa.LateRendition = 'N' THEN 0
+    ELSE NULL
+  END AS lateRendition,
+
+  CASE
+    WHEN aa.LateRendition = 'Y'
+     AND aa.RenditionRcvdDt REGEXP '^[0-9]{8}$'
+    THEN DATE_FORMAT(STR_TO_DATE(aa.RenditionRcvdDt, '%Y%m%d'), '%Y-%m-%d 00:00:00')
+    ELSE NULL
+  END AS lateRenditionDt,
+
+  CASE
+    WHEN aa.RenditionAccp = 'Y' THEN 1
+    WHEN aa.RenditionAccp = 'N' THEN 0
+    ELSE NULL
+  END AS verified,
+
+  CASE
+    WHEN aa.Renditiont1 = 'Y' OR aa.Renditiont2 = 'Y' THEN 1
+    WHEN aa.Renditiont1 = 'N' AND aa.Renditiont2 = 'N' THEN 0
+    ELSE NULL
+  END AS addExtension,
+
+  CASE
+    WHEN aa.Renditiont1 = 'Y' AND aa.Renditiont2 = 'N'
+     AND aa.Renditiont1Dt REGEXP '^[0-9]{8}$'
+    THEN DATE_FORMAT(STR_TO_DATE(aa.Renditiont1Dt, '%Y%m%d'), '%Y-%m-%d 00:00:00')
+
+    WHEN aa.Renditiont2 = 'Y'
+     AND aa.Renditiont2Dt REGEXP '^[0-9]{8}$'
+    THEN DATE_FORMAT(STR_TO_DATE(aa.Renditiont2Dt, '%Y%m%d'), '%Y-%m-%d 00:00:00')
+
+    ELSE NULL
+  END AS extensionDt,
+  LEFT(TRIM(COALESCE(pp.ContactName, '')), 45) as filingParty,
+  LEFT(TRIM(COALESCE(pp.PhoneNumberOne, '')), 45) as filingPartyPhone,
+  LEFT(TRIM(COALESCE(pp.EmailAddress, '')), 45) as filingPartyEmail,
+  LEFT(TRIM(COALESCE(aa.OwnerName1, '')), 45) as ownerName,
+  LEFT(TRIM(COALESCE(ao.Address1, '')), 64) as addrDeliveryLine,
+  LEFT(TRIM(COALESCE(ao.Attention, '')), 64) as addrUnitDesignator,
+ LEFT(TRIM(COALESCE(ao.City, '')), 64) as addrCity,
+  LEFT(TRIM(COALESCE(ao.DWPOSTAL, '')), 16) as addrZip,
+  LEFT(TRIM(COALESCE(ao.State, '')), 32) as addrState,
+  0 as addrFreeForm,
+  LEFT(TRIM(COALESCE(ao.Address1, '')), 64) as addrFreeForm1,
+  LEFT(TRIM(COALESCE(ao.Address2, '')), 64) as addrFreeForm2,
+  LEFT(TRIM(COALESCE(ao.DWADDR3, '')), 64) as addrFreeForm3,
+  @createdBy,
+  NOW()
+FROM conversionDB.AppraisalAccount aa
+JOIN conversionDB.AcctXREF axref
+  ON axref.AuditTaxYear = aa.TaxYear
+ AND axref.PropertyKey  = aa.PropertyKey
+ AND axref.AcctXRefType = 'ACCT'
+JOIN conversionDB.Account a
+  ON a.AuditTaxYear = aa.TaxYear
+ AND a.PropertyKey  = aa.PropertyKey
+JOIN conversionDB.PersonalProperty pp
+  ON pp.AuditTaxYear = aa.TaxYear
+ AND pp.PropertyKey  = aa.PropertyKey
+ AND pp.RenderedValue > 0
+join conversionDB.Owner o
+on o.OwnerKey = aa.OwnerKey
+join conversionDB.AppraisalOwner ao on ao.OwnerKey = o.OwnerKey
+left join conversionDB.AddressDetail ad on ad.AddressKey = o.AddressKey
+WHERE aa.pYear between @pYearMin and @pYearMax
+  AND aa.JurisdictionType = 'CAD';
+
+
+# select *
+# from conversionDB.Account
+# where AuditTaxYear = 2025
+# and PropertyKey = 60813;
+#
+# select *
+# from personalRendition
+# where pYear = 2025
+# and pid = 58181;
+#
+# select *
+# from conversionDB.PersonalProperty
+# where AuditTaxYear = 2025
+# and PropertyKey = 60813;
 
 ##### insert propertyBppRenditionExtensionRequests
 DROP TEMPORARY TABLE IF EXISTS tmp_pp;
@@ -240,9 +278,9 @@ JOIN tmp_a a
  AND a.pID   = pr.pID
 WHERE pr.pYear between @pYearMin and @pYearMax;
 
-select *
-from personalRendition
-where pYear = 2025
-and pid = 58257
+# select *
+# from personalRendition
+# where pYear = 2025
+# and pid = 58257
 
 

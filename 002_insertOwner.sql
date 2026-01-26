@@ -32,7 +32,7 @@ select
            THEN ad.Country ELSE NULL END as oCountry
        ,ao.*
 from conversionDB.Owner o
-join conversionDB.AppraisalOwner ao on ao.DWOWNKEY = o.OwnerKey
+join conversionDB.AppraisalOwner ao on ao.OwnerKey = o.OwnerKey
 left join conversionDB.AddressDetail ad on ad.AddressKey = o.AddressKey
 where  o.DeletedFlag = 'F'
 group by o.OwnerKey;

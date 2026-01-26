@@ -30,6 +30,30 @@
 b. **Execute the generated** DROP TABLE statements.
 
 5. **Rename tables** using the Python script:
+
+Make sure you’re using arm64 Homebrew:
+
+brew --prefix
+# should be: /opt/homebrew
+
+
+Install unixODBC (arm64):
+
+brew install unixodbc
+
+
+Create a fresh venv using an arm64 Python (example using Homebrew Python):
+
+/opt/homebrew/bin/python3 -m venv ~/rename_tbls
+source ~/rename_tbls/bin/activate
+python -c "import platform; print(platform.machine())"   # should print: arm64
+
+
+Install pyodbc:
+
+pip install --no-cache-dir pyodbc
+python -c "import pyodbc; print('pyodbc ok')"
+
    
 `rename_bowie_tbls.py`
 
