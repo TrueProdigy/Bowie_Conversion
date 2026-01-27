@@ -58,17 +58,13 @@ p.pYear as temp_pYear
 ,COALESCE(aa.HomesiteNewImprovementVal,0) + COALESCE(aa.OtherNewImprovementVal,0) AS improvementNewValue
 ,COALESCE(aa.HomesiteNewImprovementVal,0) + COALESCE(aa.OtherNewImprovementVal,0) + COALESCE(aa.HomesiteNewLandVal,0) + COALESCE(aa.OtherNewLandVal,0) as newValue
 ,aa.TotalLandVal as landValue
-,CASE
-                     WHEN al.DWHOMSITE = 'Y' THEN aa.TotalLandVal
-                     ELSE 0 end as landHSValue
-,CASE
-                     WHEN al.DWHOMSITE = 'N' THEN aa.TotalLandVal
-                     ELSE 0 end as landNHSValue
+,aa.HomesiteLandVal as landHSValue
+,(OtherLandVal + UnqualAgTimberLandVal) as landNHSValue
 ,COALESCE(aa.HomesiteNewLandVal,0) + COALESCE(aa.OtherNewLandVal,0) AS landNewValue
 ,aa.HomesiteNewLandVal as landNewHSValue
 ,aa.OtherNewLandVal as landNewNHSValue
 ,COALESCE(aa.TimberLandProdVal,0) + COALESCE(aa.AgLandProdVal,0)         AS suValue
-,COALESCE(aa.TimberLandMarketVal,0) + COALESCE(aa.AgLandMarketVal,0)     AS suLandMktValue
+,(aa.agLandMarketVal + aa.TimberLandMarketVal + aa.RestrictedUseTimberMarketVal)    AS suLandMktValue
 ,aa.ProductivityLossVal                                                  AS suExclusionValue
 ,'Legacy' as flatValueSource
 ,@createdBy
@@ -78,9 +74,6 @@ join conversionDB.AppraisalAccount aa
     on aa.TaxYear = p.pYear
     and aa.PropertyKey = p.pid
     and aa.JurisdictionType = 'CAD'
-join conversionDB.AppraisalLand al
-    on al.TaxYear = p.pYear
-    and al.PropertyKey = p.pid
 where p.pYear between @pYearMin and @pYearMax
 and p.propType in ('R', 'MH');
 
@@ -113,7 +106,7 @@ insert into valuations (
 	createdBy,
 	createDt
 	)
-select
+select distinct
 p.pYear as temp_pYear
 ,p.pid as temp_pid
 ,p.pVersion as temp_pVersion
@@ -129,17 +122,13 @@ p.pYear as temp_pYear
 ,COALESCE(aa.HomesiteNewImprovementVal,0) + COALESCE(aa.OtherNewImprovementVal,0) AS improvementNewValue
 ,COALESCE(aa.HomesiteNewImprovementVal,0) + COALESCE(aa.OtherNewImprovementVal,0) + COALESCE(aa.HomesiteNewLandVal,0) + COALESCE(aa.OtherNewLandVal,0) as newValue
 ,aa.TotalLandVal as landValue
-,CASE
-                     WHEN al.DWHOMSITE = 'Y' THEN aa.TotalLandVal
-                     ELSE 0 end as landHSValue
-,CASE
-                     WHEN al.DWHOMSITE = 'N' THEN aa.TotalLandVal
-                     ELSE 0 end as landNHSValue
+,aa.HomesiteLandVal as landHSValue
+,(OtherLandVal + UnqualAgTimberLandVal) as landNHSValue
 ,COALESCE(aa.HomesiteNewLandVal,0) + COALESCE(aa.OtherNewLandVal,0) AS landNewValue
 ,aa.HomesiteNewLandVal as landNewHSValue
 ,aa.OtherNewLandVal as landNewNHSValue
 ,COALESCE(aa.TimberLandProdVal,0) + COALESCE(aa.AgLandProdVal,0)         AS suValue
-,COALESCE(aa.TimberLandMarketVal,0) + COALESCE(aa.AgLandMarketVal,0)     AS suLandMktValue
+,(aa.agLandMarketVal + aa.TimberLandMarketVal + aa.RestrictedUseTimberMarketVal)    AS suLandMktValue
 ,aa.ProductivityLossVal                                                  AS suExclusionValue
 ,'Legacy' as flatValueSource
 ,@createdBy
@@ -149,9 +138,6 @@ join conversionDB.AppraisalAccount aa
     on aa.TaxYear = p.pYear
     and aa.PropertyKey = p.pid
     and aa.JurisdictionType = 'CAD'
-join conversionDB.AppraisalLand al
-    on al.TaxYear = p.pYear
-    and al.PropertyKey = p.pid
 where p.pYear between @pYearMin and @pYearMax
 and p.propType in ('R', 'MH');
 
