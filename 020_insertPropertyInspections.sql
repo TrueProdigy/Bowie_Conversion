@@ -66,11 +66,7 @@ RankedAppraisals AS (
     LEFT JOIN conversionDB.FlagTypesAndCodes ftc
         ON ftc.FlagCategoryType = aaf.FlagType
        AND ftc.FlagCode = aaf.FlagCode
-    WHERE aaf.TaxYear BETWEEN @pYearMin AND @pYearMax
-      AND (
-          ftc.FlagDescription LIKE '% RECHECK'
-          OR ftc.FlagDescription LIKE '% Reappraisal'
-      )
+    WHERE aaf.TaxYear BETWEEN 2019 AND @pYearMax
 )
 SELECT
     pID,
@@ -96,5 +92,6 @@ select
 from propertyInspections
 where createdBy = @p_user
 ;
+
 
 
