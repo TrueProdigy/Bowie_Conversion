@@ -58,7 +58,7 @@ RankedAppraisals AS (
 
         ROW_NUMBER() OVER (
             PARTITION BY aaf.PropertyKey, ftc.FlagDescription
-            ORDER BY aaf.TaxYear ASC   -- 🔑 MIN TaxYear
+            ORDER BY aaf.TaxYear ASC
         ) AS rn
     FROM conversionDB.AppraisalAccountFlag aaf
     JOIN LatestAppraisal la
