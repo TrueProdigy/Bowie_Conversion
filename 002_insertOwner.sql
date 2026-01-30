@@ -138,3 +138,127 @@ drop table ownerTemp;
 
 
 
+############################### update to fix ATTENTION/CO/etc issue
+set @p_user = 'TPConversion - OwnerNameAddrFix';
+
+update owner o
+join conversionDB.AppraisalOwner oname
+on oname.OwnerKey = o.ownerID
+set o.nameSecondary = CASE
+  WHEN TRIM(IFNULL(oname.Attention,'')) <> '' THEN TRIM(oname.Attention)
+
+  -- if Address1 is a CO/%, keep it as secondary
+  WHEN TRIM(IFNULL(oname.Address1,'')) LIKE '\%%' THEN TRIM(oname.Address1)
+
+  -- if Address1 looks like a personal/business name (not an address), use it
+  WHEN TRIM(IFNULL(oname.Address1,'')) <> ''
+       AND TRIM(oname.Address1) NOT REGEXP '^(PO BOX|P\.?O\.?\s*BOX|BOX|#|\d)'
+  THEN TRIM(oname.Address1)
+
+  ELSE ''
+END,
+o.addrDeliveryLine = CASE
+  -- co line in Address1: ignore it for delivery address
+  WHEN TRIM(IFNULL(oname.Address1,'')) LIKE '\%%' THEN
+    CONCAT_WS(' ',
+      -- choose the field that looks like a real street first
+      CASE
+        WHEN TRIM(IFNULL(oname.Address2,'')) REGEXP '^[#]'
+             AND TRIM(IFNULL(oname.DWADDR3,'')) <> ''
+          THEN TRIM(oname.DWADDR3)          -- street is in DWADDR3
+        ELSE TRIM(oname.Address2)           -- street is in Address2 (normal)
+      END,
+      -- append the other line(s) if present and not dup
+      CASE
+        WHEN TRIM(IFNULL(oname.Address2,'')) REGEXP '^[#]'
+          THEN NULLIF(TRIM(oname.Address2),'')   -- unit like "# B"
+        ELSE NULLIF(TRIM(oname.DWADDR3),'')
+      END
+    )
+
+  -- PMB logic unchanged
+  WHEN TRIM(IFNULL(oname.Address1,'')) LIKE 'PMB%' THEN
+    CONCAT_WS(' ',
+      NULLIF(TRIM(oname.Address1),''),
+      NULLIF(TRIM(oname.Address2),''),
+      NULLIF(TRIM(oname.DWADDR3),'')
+    )
+
+  -- default: Address2 then DWADDR3, else fall back to Address1
+  ELSE
+    CONCAT_WS(' ',
+      COALESCE(NULLIF(TRIM(oname.Address2),''), NULLIF(TRIM(oname.Address1),'')),
+      NULLIF(TRIM(oname.DWADDR3),'')
+    )
+END,
+    o.updateDt = now(),
+    o.updatedBy = @p_user
+where (
+    TRIM(IFNULL(oname.Attention,'')) <> ''
+    OR oname.Address1 LIKE '%\%%'
+    OR oname.Address1 LIKE 'C\%%0%'
+    OR TRIM(IFNULL(oname.Address2,'')) <> ''
+)
+AND (
+    TRIM(oname.Address1) REGEXP '^[A-Za-z]'
+    OR oname.Address1 LIKE '%\%%'
+);
+
+############################### check update
+select  o.ownerID,
+CASE
+  WHEN TRIM(IFNULL(oname.Address1,'')) LIKE '\%%' THEN
+    CONCAT_WS(' ',
+      CASE
+        WHEN TRIM(IFNULL(oname.Address2,'')) REGEXP '^[#]'
+             AND TRIM(IFNULL(oname.DWADDR3,'')) <> ''
+          THEN TRIM(oname.DWADDR3)          -- street is in DWADDR3
+        ELSE TRIM(oname.Address2)           -- street is in Address2 (normal)
+      END,
+      CASE
+        WHEN TRIM(IFNULL(oname.Address2,'')) REGEXP '^[#]'
+          THEN NULLIF(TRIM(oname.Address2),'')   -- unit like "# B"
+        ELSE NULLIF(TRIM(oname.DWADDR3),'')
+      END
+    )
+
+  WHEN TRIM(IFNULL(oname.Address1,'')) LIKE 'PMB%' THEN
+    CONCAT_WS(' ',
+      NULLIF(TRIM(oname.Address1),''),
+      NULLIF(TRIM(oname.Address2),''),
+      NULLIF(TRIM(oname.DWADDR3),'')
+    )
+
+  ELSE
+    CONCAT_WS(' ',
+      COALESCE(NULLIF(TRIM(oname.Address2),''), NULLIF(TRIM(oname.Address1),'')),
+      NULLIF(TRIM(oname.DWADDR3),'')
+    )
+END AS addrDeliveryLine
+,CASE
+  WHEN TRIM(IFNULL(oname.Attention,'')) <> '' THEN TRIM(oname.Attention)
+
+  WHEN TRIM(IFNULL(oname.Address1,'')) LIKE '\%%' THEN TRIM(oname.Address1)
+
+  WHEN TRIM(IFNULL(oname.Address1,'')) <> ''
+       AND TRIM(oname.Address1) NOT REGEXP '^(PO BOX|P\.?O\.?\s*BOX|BOX|#|\d)'
+  THEN TRIM(oname.Address1)
+
+  ELSE ''
+END AS nameSecondary
+
+from owner o
+join conversionDB.AppraisalOwner oname
+on oname.OwnerKey = o.ownerID
+WHERE (
+    TRIM(IFNULL(oname.Attention,'')) <> ''
+    OR oname.Address1 LIKE '%\%%'
+    OR oname.Address1 LIKE 'C\%%0%'
+    OR TRIM(IFNULL(oname.Address2,'')) <> ''
+)
+AND (
+    TRIM(oname.Address1) REGEXP '^[A-Za-z]'
+    OR oname.Address1 LIKE '%\%%'
+)
+-- and o.ownerID = 339
+;
