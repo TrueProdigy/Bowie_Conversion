@@ -6,16 +6,16 @@ set @createDt = now();
 set @p_user = 'TP Conversion';
 
 
-alter table conversionDB.AccountJurisdictionExQualify
+alter table finalDB.AccountJurisdictionExQualify
   add pYear int as (cast(AuditTaxYear as unsigned)) stored;
-call conversionDB.CreateIndex('conversionDB', 'AccountJurisdictionExQualify', 'PropertyKey', 'pYear, PropertyKey');
+call finalDB.CreateIndex('finalDB', 'AccountJurisdictionExQualify', 'PropertyKey', 'pYear, PropertyKey');
 
 
 -- List of legacy codes
 select distinct
   CCD_Code,
   CCD_Description
-  from conversionDB.CommonCodeL
+  from finalDB.CommonCodeL
   where
     CCD_Type = 'EXEMPT'
   order by
@@ -25,14 +25,14 @@ select distinct
 -- Checking to see if there's any weird stuff going on here.
 select
   *
-  from conversionDB.AccountJurisdictionExQualify
+  from finalDB.AccountJurisdictionExQualify
   where
     ClientCd <> 'A019';
 
 select
   JurisdictionCode,
   count(*)
-  from conversionDB.AccountJurisdictionExQualify
+  from finalDB.AccountJurisdictionExQualify
   group by
     JurisdictionCode;
 
@@ -44,7 +44,7 @@ select
   exemptionCode,
   count(*),
   group_concat(jurisdictionCode order by jurisdictionCode separator ', ')
-  from conversionDB.AccountJurisdictionExQualify
+  from finalDB.AccountJurisdictionExQualify
   where
     pyear >= 2020
   group by
@@ -305,7 +305,7 @@ select
             'cID', lex.cID)
         )) as legacyJSON
 
-      from conversionDB.AccountJurisdictionExQualify lex
+      from finalDB.AccountJurisdictionExQualify lex
 
       where
         lex.pYear = p.pyear

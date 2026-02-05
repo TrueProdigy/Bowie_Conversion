@@ -1,19 +1,19 @@
 use bowie_appraisal;
 set @p_user = 'TP Conversion';
-set @pYearMin = 2020;
-set @pYearMax = 2025;
+set @pYearMin = 2021;
+set @pYearMax = 2026;
 set @createdBy = 'TPConversion - assessmentInsert';
 set @createDt = now();
 set @p_skipTrigger = 1;
 
 
 
-# set sql_safe_updates = 0;
-# set foreign_key_checks = 0;
-# truncate taxingUnit;
-# #truncate propertyTaxingUnit; -- This was being done in two places -- here, and in insertPropertyTaxingUnits.
-# set sql_safe_updates = 1;
-# set foreign_key_checks = 1;
+set sql_safe_updates = 0;
+set foreign_key_checks = 0;
+truncate taxingUnit;
+#truncate propertyTaxingUnit; -- This was being done in two places -- here, and in insertPropertyTaxingUnits.
+set sql_safe_updates = 1;
+set foreign_key_checks = 1;
 
 
 INSERT INTO taxingUnit (
@@ -97,7 +97,7 @@ createdBy
 )
 select DISTINCT
             aa.PropertyKey as pID
-          ,aa.pYear
+          ,aa.TaxYear
           , 0
           , 0
           , tu.taxingUnitID
@@ -113,7 +113,7 @@ select DISTINCT
                 on tu.taxingUnitCode = aa.JurisdictionCd
      where p.AuditTaxYear between @pYearMin and @pYearMax
 
-and not exists ( select * from propertyTaxingUnit ptu where ptu.pyear = aa.pyear and ptu.pid = aa.PropertyKey and ptu.pVersion = 0 and ptu.pRollCorr = 0 and ptu.taxingUnitID = tu.taxingUnitID )
+and not exists ( select * from propertyTaxingUnit ptu where ptu.pyear = aa.TaxYear and ptu.pid = aa.PropertyKey and ptu.pVersion = 0 and ptu.pRollCorr = 0 and ptu.taxingUnitID = tu.taxingUnitID )
 ;
 
 

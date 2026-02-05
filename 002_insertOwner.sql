@@ -1,7 +1,7 @@
 use bowie_appraisal;
 
-set @pYearMin = 2020;
-set @pYearMax = 2025;
+set @pYearMin = 2021;
+set @pYearMax = 2026;
 set @createdBy = 'TP  - Insert Owners';
 set @createDt = date(now());
 set @nullDt = '1900-01-01 00:00:00';
@@ -15,22 +15,55 @@ set FOREIGN_KEY_CHECKS = 1;
 drop temporary table if exists ownerTemp;
 
 create temporary table ownerTemp
-select
-       o.OwnerKey
-       ,o.OwnerNameOne
-       ,o.BeginningTs
-       ,o.ConfidentialOwner
-       ,case WHEN o.ConfidentialOwner = 'T'
-           THEN ad.AddressOne ELSE NULL END as oAddr
-       ,case WHEN o.ConfidentialOwner = 'T'
-           THEN ad.City ELSE NULL END as oCity
-       ,case WHEN o.ConfidentialOwner = 'T'
-           THEN ad.State ELSE NULL END as oState
-       ,case WHEN o.ConfidentialOwner = 'T'
-           THEN ad.PostalCode ELSE NULL END as oPostalCode
-       ,case WHEN o.ConfidentialOwner = 'T'
-           THEN ad.Country ELSE NULL END as oCountry
-       ,ao.*
+    select o.OwnerKey
+         , o.OwnerNameOne
+         , o.BeginningTs
+         , o.ConfidentialOwner
+         , case
+               WHEN o.ConfidentialOwner = 'T'
+                   THEN ad.AddressOne
+               ELSE NULL
+           END as oAddr
+         , case
+               WHEN o.ConfidentialOwner = 'T'
+                   THEN ad.City
+               ELSE NULL
+           END as oCity
+         , case
+               WHEN o.ConfidentialOwner = 'T'
+                   THEN ad.State
+               ELSE NULL
+           END as oState
+         , case
+               WHEN o.ConfidentialOwner = 'T'
+                   THEN ad.PostalCode
+               ELSE NULL
+           END as oPostalCode
+         , case
+               WHEN o.ConfidentialOwner = 'T'
+                   THEN ad.Country
+               ELSE NULL
+           END as oCountry
+         , ao.DataAsofDateAndTime
+         , ao.ClientCd
+         , ao.DWOWNER1
+         , ao.DWOWNER2
+         , ao.DWDBA
+         , ao.Attention
+         , ao.Address1
+         , ao.Address2
+         , ao.DWADDR3
+         , ao.City
+         , ao.State
+         , ao.Country
+         , ao.DWPOSTAL
+         , ao.HoldMail
+         , ao.DWOWNXRF1
+         , ao.DWOWNXRF2
+         , ao.DWCONFOWN
+         , ao.DWNOTEOWN
+         , ao.DWBRTHDAT
+         , ao.cID
 from conversionDB.Owner o
 join conversionDB.AppraisalOwner ao on ao.OwnerKey = o.OwnerKey
 left join conversionDB.AddressDetail ad on ad.AddressKey = o.AddressKey
@@ -101,12 +134,12 @@ NULLIF(TRIM(
       SUBSTRING_INDEX(OwnerNameOne, ',', 1)
   END
 ), '') AS spouseLastName,
-    IF(TRIM(ConfidentialOwner) IN ('T'), oAddr,NULLIF(TRIM(DWADDR1), '')) as addrDeliveryLine,
+    IF(TRIM(ConfidentialOwner) IN ('T'), oAddr,NULLIF(TRIM(Address1), '')) as addrDeliveryLine,
     IF(TRIM(ConfidentialOwner) IN ('T'), oCity,NULLIF(TRIM(City), '')) as addrCity,
     IF(TRIM(ConfidentialOwner) IN ('T'), oPostalCode,NULLIF(TRIM(DWPOSTAL), '')) as addrZip,
-    IF(TRIM(ConfidentialOwner) IN ('T'), oState,NULLIF(TRIM(DWSTATE), '')) as addrState,
-    IF(NULLIF(TRIM(DWCOUNTRY), '') IS NULL OR TRIM(DWCOUNTRY) IN ('USA', 'US'), 'USA', TRIM(DWCOUNTRY)) as addrCountry,
-    IF(NULLIF(TRIM(DWCOUNTRY), '') IS NULL OR TRIM(DWCOUNTRY) IN ('USA', 'US'), FALSE, TRUE) as addrInternational,
+    IF(TRIM(ConfidentialOwner) IN ('T'), oState,NULLIF(TRIM(State), '')) as addrState,
+    IF(NULLIF(TRIM(Country), '') IS NULL OR TRIM(Country) IN ('USA', 'US'), 'USA', TRIM(Country)) as addrCountry,
+    IF(NULLIF(TRIM(Country), '') IS NULL OR TRIM(Country) IN ('USA', 'US'), FALSE, TRUE) as addrInternational,
     @createdBy as createdBy,
     NULLIF(createdBy, @nullDt) as createDt,
     @createdBy as updatedBy,

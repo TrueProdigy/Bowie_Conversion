@@ -4,12 +4,28 @@
 # alter table bowie_appraisal.pidMap add index (PropertyKey), add index(pid);
 # alter table bowie_appraisal.pidMap force;
 
-set @pYearMin = 2020;
-set @pYearMax = 2025;
+set @pYearMin = 2021;
+set @pYearMax = 2026;
 
 set @createdBy = 'TPConversion - insertProperty';
 set @createDt = now();
 set @p_user = 'TP Conversion';
+
+set sql_safe_updates = 0;
+set foreign_key_checks = 0;
+truncate property;
+truncate propertyCurrent; 
+truncate propertyAccount;
+truncate propertyProfile;
+truncate propertyCharacteristics;
+truncate propertyLegalDescription;
+truncate propertyMarketValue;
+truncate situsAddress;
+truncate propertyIdentification;
+truncate propertyAppraisers;
+truncate propertyNotes;
+set sql_safe_updates = 1;
+set foreign_key_checks = 1;
 
 # create table pidMap
 # select distinct PropertyKey, right(PropertyKey,7) as pid from conversionDB.Property;
@@ -18,7 +34,7 @@ set @p_user = 'TP Conversion';
 # alter table pidMap force;
 
 
-# property
+################# property
 insert into property
 (
 	pYear,
@@ -90,13 +106,13 @@ left join conversionDB.Account a
 where aa.TaxYear between @pYearMin and @pYearMax
  and JurisdictionCd = 'CAD';
 
-
+################# propertyCurrent
 insert into propertyCurrent(pid,pYear,pVersion,pRollCorr)
 select pid,pYear,pVersion,pRollCorr
 from property
 where pYear  between @pYearMin and @pYearMax;
 
-# prop profile
+################# prop profile
 insert into propertyProfile(
 pid
 ,pYear
@@ -106,7 +122,7 @@ pid
 ,stateCodes
 ,createdBy
 ,createDt)
-select
+select DISTINCT
 p.PropertyKey
 ,p.AuditTaxYear
 ,0
@@ -148,7 +164,7 @@ where p.AuditTaxYear between @pYearMin and @pYearMax;
 --   AND TRIM(cp.StateCd) <> ''
 --   AND pp.pYear BETWEEN 2020 AND 2025;
 
-# prop char
+################# prop char
 insert into propertyCharacteristics
 (
 pyear,
@@ -200,7 +216,7 @@ GROUP BY
   p.AuditTaxYear, p.PropertyKey, p.stateCd;
 
 
-# prop account
+################# prop account
 INSERT INTO propertyAccount
 (
     pYear,
@@ -233,8 +249,8 @@ INSERT INTO propertyAccount
     updateDt
 )
 SELECT DISTINCT
-    p.AuditTaxYear                      AS pYear,
     p.PropertyKey                       AS pID,
+    p.AuditTaxYear                      AS pYear,
     0                                   AS pVersion,
     0                                   AS pRollCorr,
     aa.OwnerKey                         AS ownerID,
@@ -319,17 +335,13 @@ join lateral (
 
   aa.TotalMarketVal as ownerMarketValue,
   aa.TotalMarketVal - aa.ProductivityLossVal as ownerAppraisedValue,
-
-
     if(aa.LimitedAppraisedVal > 0, aa.TotalMarketVal - aa.limitedAppraisedVal, 0) as ownerTaxLimitationValue,
 
-    aa.TotalAppraisedVal as ownerNetAppraisedValue,
-
+  aa.TotalAppraisedVal as ownerNetAppraisedValue,
 
     ifnull(limitationLastYearHSValue,0) as limitationLastYearHSValue,
     ifnull(limitationLastYearHSValue,0) * .1 as limitationAllowedIncrease,
     ifnull(limitationLastYearHSValue,0) + (ifnull(limitationLastYearHSValue,0) * .1) as limitationMaxAllowedIncrease,
-
 
     /*
   limitationBaseYear,
@@ -341,8 +353,6 @@ limitationLastYearHSValueOverrideReason,
 limitationNewValue,
 limitationNewValueOverride,
 limitationNewValueOverrideReason,*/
-
-
 
     HomesiteNewLandVal + OtherNewLandVal +HomesiteNewImprovementVal + OtherNewImprovementVal +HomesiteNewPersonalVal +OtherNewPersonalVal as ownerNewValue,
 
@@ -367,14 +377,10 @@ OtherNewLandVal as ownerNewLandNHSValue,
 null as taxOfficeRefID,
 null as taxOfficeRefID1,
 # null as taxOfficeUniqueID, -- This is a calculated field
-
-
-
 #createdBy,
 #createDt,
 #updatedBy,
 #updateDt,
-
 
 aa.cID as fromPAccountID,
 
@@ -392,52 +398,31 @@ aa.cID as fromPAccountID,
   aa.AgLandProdVal as ownerAgValue,
   aa.AgLandMarketVal - AgLandProdVal as ownerAgExclusionValue,
 
-
-
   aa.RestrictedUseTimberMarketVal as ownerTimber78LandMktValue,
   aa.RestrictedUseTimberProdVal as ownerTimber78Value,
   aa.RestrictedUseTimberMarketVal - RestrictedUseTimberProdVal as ownerTimber78ExclusionValue,
 
   caps.cbTaxLimitationValue as ownerCBTaxLimitationValue,
   caps.hsTaxLimitationValue as ownerHSTaxLimitationValue
-
-
   /*
   cbLimitationLastYearValue,
 cbLimitationAllowedIncrease,
 cbLimitationMaxAllowedIncrease
 */
-
-
-
-
-
 #cbLimitationBaseYear,
 #cbLimitationBaseYearOverride,
 #cbLimitationBaseYearOverrideReason,
 #cbLimitationBaseYearDate,
-
-
-
-
-
 #cbLimitationLastYearValueOverride,
 #cbLimitationLastYearValueOverrideReason,
-
 #cbLimitationNewValue,
 #cbLimitationNewValueOverride,
 #cbLimitationNewValueOverrideReason,
-
 #cbRestablishLimitationBase,
 #cbLimitationExcludeFromEvaluation,
-
-
-
 #cbLimitationOverride,
 #cbLimitationOverrideReason,
 #cbLimitationIgnoreQualifyYr,
-
-
 
 from conversionDB.AppraisalAccount aa
   join lateral (
@@ -485,27 +470,20 @@ join lateral (
       prev.HomesiteCapVal as limitationLastYearHSValue
     from conversionDB.AppraisalAccount prev
     where prev.PropertyKey = aa.PropertyKey
-    and prev.pyear = aa.pyear - 1
+    and prev.TaxYear = aa.TaxYear - 1
     and prev.jurisdictionCd = aa.jurisdictionCd
     limit 1
 
   ) prev on true
 
     where aa.PropertyKey = p.pID
-   and aa.pyear      = p.pyear
+   and aa.TaxYear      = p.pyear
    and aa.OwnerKey is not null
   order by r
   limit 1
   ) aa
 #where p.pid = 20
 ;
-
-
-
-
-
-
-
 
 #Preview
 select npa.*
@@ -570,15 +548,7 @@ pa.createDt = npa.createDt
 where pa.pAccountID > 0;
 ;
 
-
-
-
-
-
-
-
-
-# prop legal description
+################# prop legal description
 INSERT INTO propertyLegalDescription
 (
   pid,
@@ -657,7 +627,7 @@ LEFT JOIN (
 WHERE p.AuditTaxYear between @pYearMin and @pYearMax
 GROUP BY p.AuditTaxYear, p.PropertyKey;
 
-# prop market value
+################# prop market value
 insert ignore into propertyMarketValue (
 	pYear,
 	pid,
@@ -680,7 +650,6 @@ insert ignore into propertyMarketValue (
     landValue,
     landHSValue,
     landNHSValue,
-
     suExclusionValue,
     bppNewValue,
     landNewValue,
@@ -694,6 +663,9 @@ insert ignore into propertyMarketValue (
     agValue,
     agExclusionValue,
     newValue,
+    timber78LandMktValue,
+    timber78Value,
+    timber78ExclusionValue,
     createDt,
     createdBy
 	)
@@ -702,10 +674,10 @@ SELECT
   p.PropertyKey  AS pid,
   0              AS pVersion,
   0              AS pRollCorr,
-  aa.TotalAppraisedVal                              AS appraisedValue,
+  if(LimitedAppraisedVal > 0, aa.limitedAppraisedVal, aa.TotalAppraisedVal)           AS appraisedValue,
   aa.TotalMarketVal                               AS marketValue,
-  COALESCE(aa.TimberLandProdVal,0) + COALESCE(aa.AgLandProdVal,0)         AS suValue,
-  COALESCE(aa.TimberLandMarketVal,0) + COALESCE(aa.AgLandMarketVal,0)     AS suLandMktValue,
+  (COALESCE(aa.AgLandProdVal,0) + COALESCE(TimberLandProdVal,0) + COALESCE(RestrictedUseTimberProdVal,0))       AS suValue,
+  (aa.agLandMarketVal + aa.TimberLandMarketVal + aa.RestrictedUseTimberMarketVal)     AS suLandMktValue,
   pp.renderedValue,
   CASE
     WHEN aa.RenditionRcvdDt REGEXP '^[0-9]{8}$'
@@ -724,7 +696,7 @@ SELECT
     ELSE NULL
   END AS inspectionYr,
   aa.TotalMarketVal                  AS legacyMarketValue,
-  aa.TotalTaxableVal                 AS legacyNetAppraisedValue,
+  aa.TotalAppraisedVal               AS legacyNetAppraisedValue,
   aa.HomesiteNewImprovementVal       AS improvementNewHSValue,
   aa.HomesiteImprovementVal          AS improvementHSValue,
   aa.HomesiteNewLandVal              AS landNewHSValue,
@@ -732,7 +704,7 @@ SELECT
   
   aa.TotalLandVal                    AS landValue,
   aa.HomesiteLandVal                 AS landHSValue,
-  COALESCE(aa.OtherLandVal,0) + COALESCE(aa.UnqualAgTimberLandVal,0) AS landNHSValue,
+  (COALESCE(aa.OtherLandVal,0) + COALESCE(aa.UnqualAgTimberLandVal,0)) AS landNHSValue,
 
   aa.ProductivityLossVal             AS suExclusionValue,
   COALESCE(aa.OtherNewPersonalVal, 0) + COALESCE(aa.HomesitePersonalVal, 0) AS bppNewValue,
@@ -747,6 +719,9 @@ SELECT
   aa.AgLandProdVal                   AS agValue,
   COALESCE(aa.AgLandMarketVal,0) - COALESCE(aa.AgLandProdVal,0) AS agExclusionValue,
   aa.TotalNewTaxableVal              AS newValue,
+  aa.RestrictedUseTimberMarketVal as timber78LandMktValue,
+  COALESCE(aa.RestrictedUseTimberProdVal,0) as timber78Value,
+  (COALESCE(aa.RestrictedUseTimberMarketVal,0) - COALESCE(RestrictedUseTimberProdVal,0)) as timber78ExclusionValue,
   NOW(),
   @createdBy
 
@@ -770,8 +745,7 @@ LEFT JOIN (
 WHERE p.AuditTaxYear BETWEEN @pYearMin and @pYearMax;
 
 
-
-# situs
+################# situs
 insert into situsAddress
 (
 	pid,
@@ -811,7 +785,7 @@ JOIN conversionDB.AppraisalAccount aa
  AND aa.JurisdictionCd = 'CAD'
 WHERE p.AuditTaxYear BETWEEN @pYearMin and @pYearMax;
 
-# prop identification
+################# prop identification
 insert into propertyIdentification(
 	pid,
 	pYear,
@@ -845,7 +819,7 @@ LEFT JOIN conversionDB.MapIdentification mi
  AND mi.PropertyKey  = p.PropertyKey
 WHERE p.AuditTaxYear BETWEEN @pYearMin and @pYearMax;
 
-# add remarks from field cards
+################# add remarks from field cards
 insert ignore into propertyNotes (
 pid,
 content,
@@ -904,7 +878,7 @@ set pp.schoolTaxingUnitID = tu.taxingUnitID,
 where pp.pYear between @pYearMin and @pYearMax;
 
 
-#insert legacy property appraisers last appraisal
+################# insert legacy property appraisers last appraisal
 insert ignore into propertyAppraisers
 (pid, pYear, pVersion, pRollCorr, appraiserType, appraiser, appraiserReviewDt, createdBy, createDt)
 SELECT

@@ -5,13 +5,13 @@ BEGIN
     DECLARE done_tables INT DEFAULT 0;
     DECLARE v_table_name VARCHAR(128);
 
-    -- Cursor to loop through all tables in newyear that exist in conversionDB
+    -- Cursor to loop through all tables in finalDB that exist in conversionDB
     DECLARE table_cursor CURSOR FOR
         SELECT t.TABLE_NAME
         FROM INFORMATION_SCHEMA.TABLES t
         JOIN INFORMATION_SCHEMA.TABLES c
           ON t.TABLE_NAME = c.TABLE_NAME
-        WHERE t.TABLE_SCHEMA = 'newyear'
+        WHERE t.TABLE_SCHEMA = 'finalDB'
           AND c.TABLE_SCHEMA = 'conversionDB'
           AND t.TABLE_TYPE = 'BASE TABLE';
 
@@ -32,7 +32,7 @@ BEGIN
             -- Cursor to loop through columns that need renaming
             DECLARE col_cursor CURSOR FOR
                 SELECT CONCAT(
-                    'ALTER TABLE newyear.`', ny.TABLE_NAME,
+                    'ALTER TABLE finalDB.`', ny.TABLE_NAME,
                     '` CHANGE `', ny.COLUMN_NAME, '` `',
                     cdb.COLUMN_NAME, '` ',
                     ny.COLUMN_TYPE,
@@ -45,16 +45,16 @@ BEGIN
                 JOIN INFORMATION_SCHEMA.COLUMNS cdb
                   ON ny.ORDINAL_POSITION = cdb.ORDINAL_POSITION
                   AND ny.TABLE_NAME = cdb.TABLE_NAME
-                WHERE ny.TABLE_SCHEMA = 'newyear'
+                WHERE ny.TABLE_SCHEMA = 'finalDB'
                   AND cdb.TABLE_SCHEMA = 'conversionDB'
                   AND ny.TABLE_NAME = v_table_name
                   -- Only rename if names differ
                   AND ny.COLUMN_NAME <> cdb.COLUMN_NAME
-                  -- Skip if target column already exists in newyear
+                  -- Skip if target column already exists in finalDB
                   AND cdb.COLUMN_NAME NOT IN (
                       SELECT COLUMN_NAME
                       FROM INFORMATION_SCHEMA.COLUMNS
-                      WHERE TABLE_SCHEMA = 'newyear'
+                      WHERE TABLE_SCHEMA = 'finalDB'
                         AND TABLE_NAME = ny.TABLE_NAME
                   )
                 ORDER BY ny.ORDINAL_POSITION;
